@@ -1,2 +1,19 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿using System.Threading;
+
+namespace linkusBot
+{
+    class Program
+    {
+        public static void Main(string[] args)
+        {
+            Thread thread = new Thread(new ThreadStart(startBot));
+            thread.Start();
+        }
+
+        private static void startBot()
+        {
+            var bot = new MainClass();
+            bot.Run().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+}

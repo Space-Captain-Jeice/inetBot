@@ -1,0 +1,543 @@
+﻿using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
+using linkusBot.Data;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace linkusBot.Modules
+{
+    internal class ModMail
+    {
+        SocketMessage sourceMessage;
+        SocketGuild sourceGuild;
+        DiscordSocketClient _client;
+
+        ModMailTicketFileRoot ticketFileRoot;
+        List<ModMailTicket> reversedModMailTickets;
+
+        SocketRole modmailRole;
+
+        public async Task HandleModMailMessage(SocketMessage message, SocketGuild guild, DiscordSocketClient client)
+        {
+
+            if (message.Author.IsBot) { return; }
+
+            //initialize a list of modmails and punishments for use across the class
+            ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
+            PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
+
+            foreach (var item in ticketFileRoot.ModMailTicketList)
+            {
+                if (reversedModMailTickets == null)
+                {
+                    reversedModMailTickets = new List<ModMailTicket>();
+                }
+                reversedModMailTickets.Add(item);
+            }
+            reversedModMailTickets.Reverse();
+
+            //we use these in other methods
+            sourceMessage = message;
+            sourceGuild = guild;
+            _client = client;
+            modmailRole = sourceGuild.GetRole(1252237593987256340);
+
+            if (message.Content == "thanks linkus :)")
+            {
+                await message.Channel.SendMessageAsync("you're welcome vendell!");
+            }
+
+            //for new modmails created from punishment notifications
+            if (message.Reference != null && message.Channel is SocketDMChannel)
+            {
+                foreach (var item in reversedModMailTickets)
+                {
+                    if (item.isOpen && item.userID == message.Author.Id)
+                    {
+                        //user trying to open another ticket
+                        EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                            .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                            .WithTitle($"__Ticket already open!__")
+                            .WithDescription($"You already have an __open ticket__ with the ID **#{item.ticketID}**! You __cannot__ open another one.")
+                            .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                            .WithFooter("Trying to reply? Just send a message and it will get sent straight to the staff!")
+                            .WithColor(Color.Red);
+
+                        await message.Author.SendMessageAsync(embed: msgEmbedBuilder.Build());
+                        return;
+                    }
+                    else
+                    {
+
+                    }
+                }
+
+                foreach (var punish in punishments.punishmentList)
+                {
+                    if (punish.notifMsgID == message.Reference.MessageId.Value)
+                    {
+                        //open ticket from punishment
+                        await CreateModMailFromPunishment(punish);
+                        return;
+                    }
+                }
+
+            }
+            //for USER replies to existing open modmails
+            else if (message.Reference == null && message.Channel is SocketDMChannel)
+            {                
+                if (ticketFileRoot.ModMailTicketList.Count == 0) await CreateModMail();
+
+                foreach (var item in reversedModMailTickets)
+                {
+                    if (item.isOpen == true && item.userID == message.Author.Id)
+                    {
+                        await AddNewUserMessage(item);
+                        return;
+                    }
+                    else
+                    {
+                        await CreateModMail();
+                        return;
+                    }
+                }
+
+            }
+            else
+            {
+                foreach (var item in reversedModMailTickets)
+                {
+                    //i think this is the best way to find out if the source channel is a modmail channel or not
+                    //it probably isnt even close to being a good way
+                    if (message.Channel.Id == item.channelID)
+                    {
+                        if (message.Content.StartsWith("="))
+                        {
+                            string msg;
+                            msg = message.Content.Remove(0,1);
+
+                            string command = msg.Split(" ")[0];
+
+                            switch (command)
+                            {
+                                case "close":
+                                    await CloseModMail(item, msg);
+                                    break;
+                                case "reopen":
+                                     await ReopenModMail(item);
+                                     break;
+                                default:
+                                    await AddNewModMessage(item);
+                                    break;
+                            }
+                        }
+                        else
+                        { 
+                            return;
+                        }
+                    }
+                    //if not a modmail channel return
+                    //else { return; }
+                }
+            }
+        }
+
+        public async Task ReopenModMail(ModMailTicket ticket)
+        {
+            foreach (var item in reversedModMailTickets)
+            {
+                //cant reopen a ticket if the user already has an open ticket
+                if (item.isOpen && item.userID == ticket.userID)
+                {
+                    //user trying to open another ticket
+                    EmbedBuilder failEmbedBuilder = new EmbedBuilder()
+                        .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                        .WithTitle($"__Ticket already open!__")
+                        .WithDescription($"The user already has an __open ticket__ with the ID **#{item.ticketID}**! One user __cannot__ have multiple open tickets.")
+                        .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                        .WithFooter("Close the open ticket first.")
+                        .WithColor(Color.Red);
+
+                    await sourceMessage.Channel.SendMessageAsync(embed: failEmbedBuilder.Build());
+                    return;
+                }
+            }
+
+            //no open tickets, so reopen the current ticket
+            ticket.isOpen = true;
+
+            SocketUser user = _client.GetUser(ticket.userID);
+
+            //send the message to the user
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Ticket reopened!__")
+                .WithDescription($"Your ModMail ticket **#{ticket.ticketID}** has been reopened by staff!");
+
+            await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            //send a confirmation message to the modmail channel
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Ticket reopened!__")
+                .WithDescription($"You've successfully reopened this ticket. Please send a message.")
+                .WithColor(Color.Green);
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+            await sourceMessage.DeleteAsync();
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+        }
+
+        public async Task CreateModMail()
+        {
+            SocketThreadChannel ticketChannel;
+
+            //create a new modmailmessage from the message that opened this ticket 
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = sourceMessage.Content
+            };
+
+            //create new ticket and populate fields
+            ModMailTicket ticket = new()
+            {
+                ticketID = ticketFileRoot.modmailIndex,
+                userID = sourceMessage.Author.Id,
+                punishmentID = null,
+                isOpen = true,
+                associatedMessages = [mailMessage]
+            };
+            ticketFileRoot.modmailIndex++;
+
+            Emoji emoji = new Emoji("✅");
+            await sourceMessage.AddReactionAsync(emoji);
+
+            EmbedBuilder replyEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceGuild.Name} [{sourceGuild.Id}]", sourceGuild.IconUrl)
+                .WithTitle($"Modmail Created!")
+                .WithDescription($"Your Modmail with the ID **{ticket.ticketID}** has been __successfully opened__!\nPlease be patient until a staff member gets back to you!")
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, just send a message! The ticket will be closed by staff once we deem the matter resolved. You can always reopen it if you have further questions.");
+
+            try
+            {
+                ticketChannel = await sourceGuild.GetTextChannel(1246153897618309170).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PrivateThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
+
+                ticket.channelID = ticketChannel.Id;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
+            EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New Modmail!")
+                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened!")
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
+
+            var roleList = string.Join(", ", sourceGuild.GetUser(sourceMessage.Author.Id).Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
+
+            EmbedBuilder openEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New Modmail!")
+                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`!")
+                .AddField($":nerd: Author", $":calendar: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:calendar: <t:{sourceGuild.GetUser(sourceMessage.Author.Id).JoinedAt.Value.ToUnixTimeSeconds()}:f>\n:crossed_swords: {roleList}")
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
+
+            await ticketChannel.SendMessageAsync(modmailRole.Mention);
+            await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
+            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build());
+
+            await sourceMessage.Author.SendMessageAsync(embed: replyEmbedBuilder.Build());
+
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New message!")
+                .WithDescription($"{sourceMessage.Content}");
+
+            await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            if (ticketFileRoot.ModMailTicketList != null)
+            {
+                ticketFileRoot.ModMailTicketList.Add(ticket);
+            }
+            else
+            {
+                ticketFileRoot.ModMailTicketList = [ticket];
+            }
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+        }
+
+        public async Task CloseModMail(ModMailTicket ticket, string msg)
+        {
+            string reason = msg.Remove(0,6);
+
+            ticket.isOpen = false;
+            ticket.closingReason = reason;
+            ticket.closingModID = sourceMessage.Author.Id;
+
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = reason
+            };
+
+            //associatedmessages logically cannot be null here
+            ticket.associatedMessages.Add(mailMessage);
+
+            SocketUser user = _client.GetUser(ticket.userID);
+
+            //send the message to the user
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"Your ModMail ticket has been closed with the reason `{reason}`");
+
+            await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            //send a confirmation message to the modmail thread
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
+                .WithColor(Color.Green);
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+            //send a confirmation message to the modmail channel
+            EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
+                .WithColor(Color.Red);
+
+            ComponentBuilder buttonBuilder = new ComponentBuilder()
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/1244328365129994240/{ticket.channelID}");
+
+            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
+
+            await sourceMessage.DeleteAsync();
+
+            await sourceGuild.GetThreadChannel(sourceMessage.Channel.Id).ModifyAsync(x =>
+            {
+                x.Locked = true;
+                x.Archived = true;
+            });
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+        }
+
+        public async Task AddNewModMessage(ModMailTicket ticket)
+        {
+            if (!ticket.isOpen)
+            {
+                //send a fail message to the modmail channel
+                EmbedBuilder failEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                    .WithTitle($"__Ticket Closed__")
+                    .WithDescription($"The ticket you're trying to reply to is already closed.")
+                    .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                    .WithFooter("To reopen, send '=reopen'")
+                    .WithColor(Color.Red);
+
+                await sourceMessage.Channel.SendMessageAsync(embed: failEmbedBuilder.Build());
+                return;
+            }
+
+            string message = sourceMessage.Content.Remove(0, 1);
+
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = message
+            };
+
+            //associatedmessages logically cannot be null here
+            ticket.associatedMessages.Add(mailMessage);
+
+            SocketUser user = _client.GetUser(ticket.userID);
+
+            //send the message to the user
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Message recieved__")
+                .WithDescription($"{message}");
+
+            await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            //send a confirmation message to the modmail channel
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Message sent__")
+                .WithDescription($"{message}")
+                .WithColor(Color.Green);
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+            await sourceMessage.DeleteAsync();
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+        }
+
+        public async Task AddNewUserMessage(ModMailTicket ticket)
+        {
+            SocketTextChannel ticketChannel = sourceGuild.GetTextChannel(ticket.channelID);
+
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = sourceMessage.Content
+            };
+
+            //associatedmessages logically cannot be null here
+            ticket.associatedMessages.Add(mailMessage);
+
+            //send this message to the modmail channel
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Message recieved__")
+                .WithDescription($"{sourceMessage.Content}");
+
+            await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+
+            //send a confirmation to the user
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"__Message sent__")
+                .WithDescription($"{sourceMessage.Content}")
+                .WithColor(Color.Green);
+                
+            await sourceMessage.Author.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+            Emoji emoji = new Emoji("✅");
+            await sourceMessage.AddReactionAsync(emoji);
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+        }
+
+        public async Task CreateModMailFromPunishment(Punishment punishment)
+        {
+            SocketThreadChannel ticketChannel;
+
+            //get message and emote strings for punishment
+            string typeText = Commands.getTypeTexts(punishment.type)[0];
+            string emote = Commands.getTypeTexts(punishment.type)[1];
+
+            //create a new modmailmessage from the message that opened this ticket 
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = sourceMessage.Content
+            };
+
+            //create new ticket and populate fields
+            ModMailTicket ticket = new()
+            {
+                ticketID = ticketFileRoot.modmailIndex,
+                userID = sourceMessage.Author.Id,
+                punishmentID = punishment.punishmentID,
+                isOpen = true,
+                associatedMessages = [mailMessage]
+            };
+            ticketFileRoot.modmailIndex++;
+
+            EmbedBuilder replyEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceGuild.Name} [{sourceGuild.Id}]", sourceGuild.IconUrl)
+                .WithTitle($"Modmail Created!")
+                .WithDescription($"Your Modmail with the ID **{ticket.ticketID}** for punishment **#{ticket.punishmentID}** has been __successfully opened__!\nPlease be patient until a staff member gets back to you!")
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, just send a message! The ticket will be closed by staff once we deem the matter resolved. You can always reopen it if you have further questions.");
+
+            try
+            {
+                ticketChannel = await sourceGuild.GetTextChannel(1246153897618309170).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PublicThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
+
+                ticket.channelID = ticketChannel.Id;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
+            await sourceMessage.Author.SendMessageAsync(embed: replyEmbedBuilder.Build());
+
+            if (ticketFileRoot.ModMailTicketList != null)
+            {
+                ticketFileRoot.ModMailTicketList.Add(ticket);
+            }
+            else
+            {
+                ticketFileRoot.ModMailTicketList = [ticket];
+            }
+
+            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+
+            EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New Modmail!")
+                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened! This ticket has been created in response to a punishment.")
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
+            
+            string roleList = "";
+            long joinedat = 0;
+            if (sourceGuild.GetUser(sourceMessage.Author.Id) != null)
+            {
+                long joinedAt = sourceGuild.GetUser(sourceMessage.Author.Id).JoinedAt.Value.ToUnixTimeSeconds();
+                roleList = string.Join(", ", sourceGuild.GetUser(sourceMessage.Author.Id).Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
+            }
+            else
+            {
+                roleList = "User not in server!";
+            }
+
+            EmbedBuilder openEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New Modmail!")
+                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`! This ticket has been created in response to a punishment:")
+                .AddField($"{emote} {typeText}", $":hash: **#{ticket.ticketID}**\n:clock8: <t:{punishment.timestamp}:f>\n:dart: <@{punishment.targetID}>\n:cop: <@{punishment.modID}>\n** Reason**:\n`{punishment.reason}`", true)
+                .AddField($":nerd: Author", $":calendar: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:calendar: <t:{joinedat}:f>\n:crossed_swords: {roleList}", true)
+                .WithColor(Color.Green)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
+
+            await ticketChannel.SendMessageAsync(modmailRole.Mention);
+            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build());
+            await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
+
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                .WithTitle($"New message!")
+                .WithDescription($"{sourceMessage.Content}");
+
+            await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            Emoji emoji = new Emoji("✅");
+            await sourceMessage.AddReactionAsync(emoji);
+        }
+    }
+}
