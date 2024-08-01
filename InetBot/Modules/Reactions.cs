@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace linkusBot.Modules
+namespace InetBot.Modules
 {
     public class Reactions
     {

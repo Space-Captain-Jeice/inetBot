@@ -10,11 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
 using Discord.Net;
 using Newtonsoft.Json;
-using linkusBot.Modules;
-using linkusBot.Data;
+using InetBot.Modules;
+using InetBot.Data;
 using System.Security;
 
-namespace linkusBot
+namespace InetBot
 {
     public class MainClass
     {
@@ -22,8 +22,8 @@ namespace linkusBot
 
         //we pass these to other methods
         private SocketGuild _guild;
-        private SocketTextChannel _modChannel;
 
+        private ulong _guildId = 421017607710441492;
 
 
         public async Task Run()
@@ -37,7 +37,7 @@ namespace linkusBot
             _client.Log += Log;
             _client.Ready += Client_Ready;
 
-            await _client.SetGameAsync("Waiting to listen in /r/3DS", null, ActivityType.CustomStatus);
+            await _client.SetGameAsync("Waiting to help in /r/3DS", null, ActivityType.CustomStatus);
 
             _client.MessageReceived += MessageRecievedHandler;
             _client.AuditLogCreated += AuditLogCreated;
@@ -58,15 +58,21 @@ namespace linkusBot
         private async Task AuditLogCreated(SocketAuditLogEntry logEntry, SocketGuild guild)
         {
             Commands commands = new Commands();
-            await commands.HandleAuditLog(logEntry, guild);
+            //await commands.HandleAuditLog(logEntry, guild, _client);
         }
 
         private async Task Client_Ready()
         {
-            _guild = _client.GetGuild(1244328365129994240);
-            _modChannel = _guild.GetTextChannel(1244346391086764124);
-
-            Console.WriteLine("jorking my peanits");
+            _guild = _client.GetGuild(_guildId);
+            
+            Console.ResetColor();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Client Ready! Version 0.001");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Guild: ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write(_guild.Name + "\n");
+            Console.ResetColor();
 
             //var emote = Emote.Parse("<:o3ds:1261080733913710633>");
             //await _guild.GetTextChannel(1244346826174369862).GetMessageAsync(1260477725118824478).Result.AddReactionAsync(emote);
@@ -167,6 +173,18 @@ namespace linkusBot
                     .AddOption("target", ApplicationCommandOptionType.User, "target", isRequired: true)
                 );
 
+            var acceptCommand = new SlashCommandBuilder()
+                .WithName("accept")
+                .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
+                .WithDescription("Accept a staff application.")
+                .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
+
+            var denyCommand = new SlashCommandBuilder()
+                .WithName("deny")
+                .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
+                .WithDescription("Deny a staff application.")
+                .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
+
             var helpCommand = new SlashCommandBuilder()
                 .WithName("help")
                 .WithDescription("Shows a help message.");
@@ -188,6 +206,9 @@ namespace linkusBot
                 //await _guild.CreateApplicationCommandAsync(unmuteCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(getpunishmentsCommand.Build());
+
+                //await _guild.CreateApplicationCommandAsync(acceptCommand.Build());
+                //await _guild.CreateApplicationCommandAsync(denyCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(helpCommand.Build());
             }

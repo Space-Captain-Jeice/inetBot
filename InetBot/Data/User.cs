@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace linkusBot.Data
+namespace InetBot.Data
 {
     internal class User
     {

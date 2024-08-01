@@ -1,16 +1,19 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
-using linkusBot.Data;
+using InetBot.Data;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace linkusBot.Modules
+namespace InetBot.Modules
 {
     internal class ModMail
     {
@@ -22,6 +25,10 @@ namespace linkusBot.Modules
         List<ModMailTicket> reversedModMailTickets;
 
         SocketRole modmailRole;
+
+        ulong modmailChannelId = 440118112977944578;
+        ulong modmailRoleId = 455414864056156170;
+
 
         public async Task HandleModMailMessage(SocketMessage message, SocketGuild guild, DiscordSocketClient client)
         {
@@ -46,11 +53,32 @@ namespace linkusBot.Modules
             sourceMessage = message;
             sourceGuild = guild;
             _client = client;
-            modmailRole = sourceGuild.GetRole(1252237593987256340);
+            modmailRole = sourceGuild.GetRole(modmailRoleId);
 
-            if (message.Content == "thanks linkus :)")
+            if (message.Content == "thanks inet")
             {
-                await message.Channel.SendMessageAsync("you're welcome vendell!");
+                await message.Channel.SendMessageAsync("you're welcome!");
+            }
+
+            if (message.Content == "peanits")
+            {
+                try
+                {
+                    await client.GetUserAsync(550770264967741451).Result.SendMessageAsync("peanits");
+                }
+                catch (HttpException e)
+                {
+                    if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        EmbedBuilder embedBuilder = new EmbedBuilder()
+                            .WithTitle("AAAAAAAAAAAA")
+                            .WithDescription("cant :(")
+                            .WithColor(Color.Red);
+
+                        await sourceMessage.Channel.SendMessageAsync(embed:embedBuilder.Build());
+                    }
+                }
+
             }
 
             //for new modmails created from punishment notifications
@@ -66,7 +94,7 @@ namespace linkusBot.Modules
                             .WithTitle($"__Ticket already open!__")
                             .WithDescription($"You already have an __open ticket__ with the ID **#{item.ticketID}**! You __cannot__ open another one.")
                             .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
-                            .WithFooter("Trying to reply? Just send a message and it will get sent straight to the staff!")
+                            .WithFooter("Trying to reply? Just send a message and it will get sent straight to the staff team!")
                             .WithColor(Color.Red);
 
                         await message.Author.SendMessageAsync(embed: msgEmbedBuilder.Build());
@@ -193,7 +221,7 @@ namespace linkusBot.Modules
 
             await sourceMessage.DeleteAsync();
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
         }
 
         public async Task CreateModMail()
@@ -228,11 +256,11 @@ namespace linkusBot.Modules
                 .WithDescription($"Your Modmail with the ID **{ticket.ticketID}** has been __successfully opened__!\nPlease be patient until a staff member gets back to you!")
                 .WithColor(Color.Green)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
-                .WithFooter("To reply, just send a message! The ticket will be closed by staff once we deem the matter resolved. You can always reopen it if you have further questions.");
+                .WithFooter("To reply, just send a message! The ticket will be closed by staff once we deem the matter resolved.");
 
             try
             {
-                ticketChannel = await sourceGuild.GetTextChannel(1246153897618309170).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PrivateThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
+                ticketChannel = await sourceGuild.GetTextChannel(modmailChannelId).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PrivateThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
 
                 ticket.channelID = ticketChannel.Id;
             }
@@ -262,7 +290,7 @@ namespace linkusBot.Modules
 
             await ticketChannel.SendMessageAsync(modmailRole.Mention);
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
-            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build());
+            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build());
 
             await sourceMessage.Author.SendMessageAsync(embed: replyEmbedBuilder.Build());
 
@@ -282,11 +310,25 @@ namespace linkusBot.Modules
                 ticketFileRoot.ModMailTicketList = [ticket];
             }
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
         }
 
         public async Task CloseModMail(ModMailTicket ticket, string msg)
         {
+            if (msg.Length <= 6)
+            {
+                EmbedBuilder failEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                    .WithTitle("__No reason provided__")
+                    .WithDescription(":prohibited: Please provide a reason!")
+                    .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                    .WithFooter("Closing without a reason is rude.")
+                    .WithColor(Color.Red);
+
+                await sourceMessage.Channel.SendMessageAsync(embed: failEmbedBuilder.Build());
+            }
+
+
             string reason = msg.Remove(0,6);
 
             ticket.isOpen = false;
@@ -330,9 +372,9 @@ namespace linkusBot.Modules
                 .WithColor(Color.Red);
 
             ComponentBuilder buttonBuilder = new ComponentBuilder()
-                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/1244328365129994240/{ticket.channelID}");
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/modmailChannelId/{ticket.channelID}");
 
-            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
+            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
 
             await sourceMessage.DeleteAsync();
 
@@ -342,7 +384,7 @@ namespace linkusBot.Modules
                 x.Archived = true;
             });
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
         }
 
         public async Task AddNewModMessage(ModMailTicket ticket)
@@ -395,7 +437,7 @@ namespace linkusBot.Modules
 
             await sourceMessage.DeleteAsync();
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
         }
 
         public async Task AddNewUserMessage(ModMailTicket ticket)
@@ -433,7 +475,7 @@ namespace linkusBot.Modules
             Emoji emoji = new Emoji("✅");
             await sourceMessage.AddReactionAsync(emoji);
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
         }
 
         public async Task CreateModMailFromPunishment(Punishment punishment)
@@ -473,7 +515,7 @@ namespace linkusBot.Modules
 
             try
             {
-                ticketChannel = await sourceGuild.GetTextChannel(1246153897618309170).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PublicThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
+                ticketChannel = await sourceGuild.GetTextChannel(modmailChannelId).CreateThreadAsync($"{sourceMessage.Author.Username}-{ticket.ticketID}", ThreadType.PublicThread, ThreadArchiveDuration.OneWeek, null, null, null, null);
 
                 ticket.channelID = ticketChannel.Id;
             }
@@ -493,7 +535,7 @@ namespace linkusBot.Modules
                 ticketFileRoot.ModMailTicketList = [ticket];
             }
 
-            File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\modmailtickets.json"), JsonConvert.SerializeObject(ticketFileRoot, Formatting.Indented));
+            await SaveModmails();
 
             EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
@@ -526,7 +568,7 @@ namespace linkusBot.Modules
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
             await ticketChannel.SendMessageAsync(modmailRole.Mention);
-            await sourceGuild.GetTextChannel(1244345311854461010).SendMessageAsync(embed: notifEmbedBuilder.Build());
+            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build());
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
 
             EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
@@ -538,6 +580,18 @@ namespace linkusBot.Modules
 
             Emoji emoji = new Emoji("✅");
             await sourceMessage.AddReactionAsync(emoji);
+        }
+
+        public async Task SaveModmails()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                File.WriteAllText(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName) + "\\modmailtickets.json", JsonConvert.SerializeObject((object)this.ticketFileRoot, Formatting.Indented));
+            }
+            else if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                File.WriteAllText("/home/vendell/inet/modmailtickets.json", JsonConvert.SerializeObject((object)this.ticketFileRoot, Formatting.Indented));
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
-using linkusBot.Data;
+using InetBot.Data;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -9,10 +10,11 @@ using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace linkusBot.Modules
+namespace InetBot.Modules
 {
     public class Commands
     {
@@ -31,6 +33,8 @@ namespace linkusBot.Modules
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny"];
         SocketTextChannel _modChannel;
 
+        private ulong modChannelID = 440118112977944578;
+
         //
         // Summary:
         //     Handle a SocketSlashCommand.
@@ -46,11 +50,22 @@ namespace linkusBot.Modules
 
             SocketGuildUser guildUser1 = _user as SocketGuildUser;
 
-            _modChannel = guild.GetTextChannel(1244346391086764124);
+            _modChannel = guild.GetTextChannel(modChannelID);
+
+            ulong id;
+
+            Console.Write(DateTime.Now.ToString() + " - ");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("Slash command sent! ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("'" + command.Data.Name + "' ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write("'" + command.User.Username + "'\n");
+            Console.ResetColor();
 
             foreach (var item in guildUser1.Roles)
             {
-                if (item.Id == 1252237002707963977) userHasPerms = true;
+                if (item.Id == 455414864056156170) userHasPerms = true;
             }
 
             switch (command.Data.Name)
@@ -117,6 +132,14 @@ namespace linkusBot.Modules
 
                     await HandleGetpunishmentsCommand(guildUser, by, valueID, guild);
                     break;
+                case "deny":
+                    id = ulong.Parse(command.Data.Options.First().Value.ToString());
+                    await HandleDenyCommand(id, guild);
+                    break;
+                case "accept":
+                    id = ulong.Parse(command.Data.Options.First().Value.ToString());
+                    await HandleAcceptCommand(id, guild);
+                    break;
                 case "help":
                     guildUser = command.User as SocketGuildUser;
                     await HandleHelpCommand(guildUser);
@@ -134,38 +157,59 @@ namespace linkusBot.Modules
             _userMessage = message as SocketUserMessage;
 
             string msg = message.Content.Remove(0, 1);
-            string cmd = msg.Split(" ")[0];
+            string cmd = msg.Split(" ")[0].ToLower();
 
             string reason;
             SocketGuildUser guildUser;
 
             SocketGuildUser guildUser1 = _user as SocketGuildUser;
 
-            _modChannel = guild.GetTextChannel(1244346391086764124);
+            _modChannel = guild.GetTextChannel(modChannelID);
+
+            Console.Write(DateTime.Now.ToString() + " - ");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("? command sent! ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("'" + cmd + "' ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write("'" + _user.Username + "'\n");
+            Console.ResetColor();
 
             ulong id;
 
             foreach (var item in guildUser1.Roles)
             {
-                if (item.Id == 1252237002707963977) userHasPerms = true;
+                if (item.Id == 455414864056156170) userHasPerms = true;
             }
 
-            if (modCommands.Any(cmd.Contains) && !userHasPerms)
-            {
-                EmbedBuilder noPermissionBuilder = new EmbedBuilder()
-                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
-                    .WithTitle("__No permission!__")
-                    .WithDescription($"You do not have access to the command `?{cmd}`")
-                    .WithColor(Color.Red);
-                
-                await RespondToTextCommand(noPermissionBuilder);
-
-                return;
-            }
+            EmbedBuilder noPermissionBuilder = new EmbedBuilder()
+                .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                .WithTitle("__No permission!__")
+                .WithDescription($"You do not have access to the command `?{cmd}`")
+                .WithColor(Color.Red);
 
             switch (cmd)
             {
                 case "ban":
+                    if (!guildUser1.GuildPermissions.BanMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+                    }
+
+                    if (message.Content.Length <= 5)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?ban <@user> <reason>`\n?ban <@177732626424135680> Said he would never post otters again.")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length == 26)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -175,7 +219,7 @@ namespace linkusBot.Modules
                             .WithColor(Color.Red)
                             .WithCurrentTimestamp();
 
-                        await RespondToTextCommand(errorBuilder);
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
                         return;
                     }
 
@@ -185,10 +229,50 @@ namespace linkusBot.Modules
                     await HandleBanCommand(guildUser, reason, guild);
                     break;
                 case "unban":
+                    if (!guildUser1.GuildPermissions.BanMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 7)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?unban <user id>`\n?unban 177732626424135680")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     ulong guildUserId = ulong.Parse(message.Content.Remove(0, 7));
                     await HandleUnbanCommand(guildUserId, guild);
                     break;
                 case "kick":
+                    if (!guildUser1.GuildPermissions.KickMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 6)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?kick <@user> <reason>`\n?kick <@177732626424135680> Didnt post a daily otter picture.")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length == 27)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -208,6 +292,26 @@ namespace linkusBot.Modules
                     await HandleKickCommand(guildUser, reason, guild);
                     break;
                 case "unkick":
+                    if (!guildUser1.GuildPermissions.KickMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 8)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?unkick user/id <@user/punishment id>`\n?unkick <@177732626424135680>\n?unkick 5")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     guildUser = null;
                     by = message.Content.Remove(0, 8).Split(" ")[0];
                     if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
@@ -217,6 +321,25 @@ namespace linkusBot.Modules
                     await HandleUnkickCommand(guildUser, by, valueID, guild);
                     break;
                 case "mute":
+                    if (!guildUser1.GuildPermissions.ModerateMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+                    }
+
+                    if (message.Content.Length <= 6)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?mute <@user> <duration> <reason>`\n?mute <@177732626424135680> 10m Spamming furry memes.")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length == 27)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -237,11 +360,50 @@ namespace linkusBot.Modules
                     await HandleMuteCommand(guildUser, duration, reason, guild);
                     break;
                 case "unmute":
+                    if (!guildUser1.GuildPermissions.ModerateMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+                    }
+
+                    if (message.Content.Length <= 8)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?unmute <@user>\n`?unmute <@177732626424135680>")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     guildUser = message.MentionedUsers.First() as SocketGuildUser;
 
                     await HandleUnmuteCommand(guildUser, guild);
                     break;
                 case "warn":
+                    if (!guildUser1.GuildPermissions.KickMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 5)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?warn <@user> <reason>`\n?warn <@177732626424135680> Sending a risque meme.")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length == 27)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -261,6 +423,26 @@ namespace linkusBot.Modules
                     await HandleWarnCommand(guildUser, reason, guild);
                     break;
                 case "unwarn":
+                    if (!guildUser1.GuildPermissions.KickMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 8)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?unwarn user/id <@user/punishment id>`\n?unwarn <@177732626424135680>\n?unwarn 68")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     guildUser = null;
                     by = message.Content.Remove(0, 8).Split(" ")[0];
                     if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
@@ -270,6 +452,26 @@ namespace linkusBot.Modules
                     await HandleUnwarnCommand(guildUser, by, valueID, guild);
                     break;
                 case "getpunishments":
+                    if (!guildUser1.GuildPermissions.KickMembers)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+
+                    }
+
+                    if (message.Content.Length <= 16)
+                    {
+                        var errorBuilder = new EmbedBuilder()
+                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                            .WithTitle("__Syntax:__")
+                            .WithDescription($"`?getpunishments mod/target/id <@mod/@target/punishment id>`\n?getpunishments mod <@177732626424135680>\n?getpunishments target <@246050963922616320>\n?getpunishments id 45")
+                            .WithColor(Color.Red)
+                            .WithCurrentTimestamp();
+
+                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                        return;
+                    }
+
                     guildUser = null;
                     by = message.Content.Remove(0, 16).Split(" ")[0];
                     if (by == "mod") by = "moderator";
@@ -280,6 +482,12 @@ namespace linkusBot.Modules
                     await HandleGetpunishmentsCommand(guildUser, by, valueID, guild);
                     break;
                 case "deny":
+                    if (!userHasPerms)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length <= 5)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -298,6 +506,12 @@ namespace linkusBot.Modules
                     await HandleDenyCommand(id, guild);
                     break;
                 case "accept":
+                    if (!userHasPerms)
+                    {
+                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                        return;
+                    }
+
                     if (message.Content.Length <= 7)
                     {
                         var errorBuilder = new EmbedBuilder()
@@ -366,8 +580,8 @@ namespace linkusBot.Modules
             {
                 var modReplyBuilder = new EmbedBuilder()
                     .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
-                    .WithTitle("Linkus Moderator Help")
-                    .WithDescription("**Linkus is your Moderation and Modmail bot for the r/3DS Discord!**\n" +
+                    .WithTitle("Inet-Kun Moderator Help")
+                    .WithDescription("**Inet is your Moderation and Modmail bot for the r/3DS Discord!**\n" +
                     "Here is an overview of the commands with examples! The '?' commands work the same way.\n" +
                     "__**Applying punishments**__\n" +
                     "`/warn <@user> <reason>`\n" +
@@ -398,8 +612,8 @@ namespace linkusBot.Modules
 
             var userReplyBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
-                .WithTitle("Linkus User Help")
-                .WithDescription("**Linkus is your Fun and Modmail bot for the r/3DS Discord!**\n" +
+                .WithTitle("Inet-Kun User Help")
+                .WithDescription("**Inet is your Fun and Modmail bot for the r/3DS Discord!**\n" +
                 "Here is an overview of the commands with examples!\n\n" +
                 "`?otter/dog/cat`\n" + 
                 "Gets a random image of your favourite critter.\n");
@@ -410,6 +624,19 @@ namespace linkusBot.Modules
 
         private async Task HandleBanCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
         {
+            if (guildUser.GuildPermissions.KickMembers)
+            {
+                EmbedBuilder staffMemberPunish = new EmbedBuilder()
+                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                    .WithTitle("__I can't do that!__")
+                    .WithDescription($"You can't ban other staff members.")
+                    .WithColor(Color.Red);
+
+                if (isSlashCommand) await RespondToSlashCommand(staffMemberPunish);
+                else await RespondToTextCommand(staffMemberPunish);
+
+                return;
+            }
 
             //Create Punishment in DB and save
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -424,37 +651,50 @@ namespace linkusBot.Modules
             punishment.punishmentID = punishments.punishmentIndex;
             punishment.timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             punishment.active = true;
-
-            //await target.BanAsync(0, $"{reason} #{punishment.punishmentID}");
+            punishment.notifMsgID = 0;
 
             //Create Mod Log
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("__Ban applied successfully__")
-                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been banned for __{reason}__")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been banned for __{reason}__. #{punishment.punishmentID}")
                 .WithColor(Color.Red)
                 .WithCurrentTimestamp();
 
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you have broken the rules of the server.__**")
                 .WithDescription($"You have been banned for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "BAN", true)
-                .AddField("Note", "If you disagree with the action taken, please visit [this link](https://docs.google.com/forms/d/16KdS0jBFY79g0rOOCmTS5qZ9_WLNzQqNOzmWrUbmwyU)", false)
+                .AddField("Note", "If you disagree with the action taken, please visit [this link](https://forms.gle/CMm8jPAxQCSoGYVY8)", false)
                 .WithColor(Color.LightOrange)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
 
             //Send both
-            punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+
+            try
+            {
+                punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the appeal form.");
+                }
+            }
+
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
 
             punishments.punishmentList.Add(punishment);
 
             await SavePunishment(punishments);
+
+            //await target.BanAsync(0, $"{reason} #{punishment.punishmentID}");
         }
 
         private async Task HandleUnbanCommand(ulong guildUserId, SocketGuild guild)
@@ -510,6 +750,19 @@ namespace linkusBot.Modules
 
         private async Task HandleKickCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
         {
+            if (guildUser.GuildPermissions.KickMembers)
+            {
+                EmbedBuilder staffMemberPunish = new EmbedBuilder()
+                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                    .WithTitle("__I can't do that!__")
+                    .WithDescription($"You can't kick other staff members.")
+                    .WithColor(Color.Red);
+
+                if (isSlashCommand) await RespondToSlashCommand(staffMemberPunish);
+                else await RespondToTextCommand(staffMemberPunish);
+
+                return;
+            }
 
             //Create Punishment in DB
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -525,19 +778,17 @@ namespace linkusBot.Modules
             punishment.timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             punishment.active = true;
 
-            //await guildUser.KickAsync($"{reason} #{punishment.punishmentID}");
-
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("__Kick applied successfully__")
-                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been kicked for __{reason}__")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been kicked for __{reason}__. #{punishment.punishmentID}")
                 .WithColor(Color.Orange)
                 .WithCurrentTimestamp();
 
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you have broken the rules of the server.__**")
                 .WithDescription($"You have been kicked for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "KICK", true)
@@ -547,7 +798,19 @@ namespace linkusBot.Modules
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
 
             //Send both and save notification message ID
-            punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+
+            try
+            {
+                punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
+                }
+            }
+
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
 
@@ -556,6 +819,8 @@ namespace linkusBot.Modules
 
             await SavePunishment(punishments);
 
+
+            await guildUser.KickAsync($"{reason} #{punishment.punishmentID}");
         }
 
         private async Task HandleUnkickCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild)
@@ -644,6 +909,20 @@ namespace linkusBot.Modules
 
         private async Task HandleMuteCommand(SocketGuildUser guildUser, string duration, string reason, SocketGuild guild)
         {
+            if (guildUser.GuildPermissions.KickMembers)
+            {
+                EmbedBuilder staffMemberPunish = new EmbedBuilder()
+                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                    .WithTitle("__I can't do that!__")
+                    .WithDescription($"You can't time out other staff members.")
+                    .WithColor(Color.Red);
+
+                if (isSlashCommand) await RespondToSlashCommand(staffMemberPunish);
+                else await RespondToTextCommand(staffMemberPunish);
+
+                return;
+            }
+
             //Create Punishment in DB and save
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             punishments.punishmentIndex++;
@@ -695,7 +974,7 @@ namespace linkusBot.Modules
                 minutes = splitM[0];
             }
 
-            //await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes), 0));
+            await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes), 0));
 
             //message duration builder
             string messageDuration = "";
@@ -706,14 +985,14 @@ namespace linkusBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("__Mute applied successfully__")
-                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been muted for __{reason}__ for __{messageDuration}__.")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been muted for __{reason}__ for __{messageDuration}__. #{punishment.punishmentID}")
                 .WithColor(Color.LightOrange)
                 .WithCurrentTimestamp();
 
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you have broken the rules of the server.__**")
                 .WithDescription($"You have been muted for __{reason}__ for __{messageDuration}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "MUTE", true)
@@ -723,6 +1002,18 @@ namespace linkusBot.Modules
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
 
             //Send both
+            try
+            {
+                punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
+                }
+            }
+
             punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
@@ -801,14 +1092,14 @@ namespace linkusBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("__Warn applied successfully__")
-                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been warned for __{reason}__. ID#{punishment.punishmentID}")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been warned for __{reason}__. #{punishment.punishmentID}")
                 .WithColor(Color.LightOrange)
                 .WithCurrentTimestamp();
 
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you have broken the rules of the server.__**")
                 .WithDescription($"You have been warned for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "WARN", true)
@@ -818,7 +1109,18 @@ namespace linkusBot.Modules
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
 
             //Send both
-            punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            try
+            {
+                punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
+                }
+            }
+
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
 
@@ -1072,18 +1374,28 @@ namespace linkusBot.Modules
             var notifBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
                 .WithTitle($"__Your staff application__")
-                .WithDescription($"Hey there! Thank you for applying for our **Moderator** position. Our team has reviewed your application " +
-                "& we regret to inform you that you were not chosen for the position as you do not fulfill our requirements for the position, " +
-                "we will not be moving forward with your application.\n\n" +
+                .WithDescription($"Hey there! Thank you for applying. Our team has reviewed your application " +
+                "& we regret to inform you that you were not chosen for moderator as you do not fulfill our requirements.\n\n" +
                 "However we appreciate you taking interest & time to apply, your dedication is appreciated. We hope you continue to be a part of " +
-                "& engage with our community & keep being interested in the **Moderator** position. We hope to see you as a part of the staff team next time!\n\n" +
+                "& engage with our community.\n\n" +
                 "You may reapply for the position once the next round of staff applications are announced, Good Luck!\n\n" +
-                "Epic regards,\nStaff Team at r/3DS Discord")
+                "Kind regards,\nStaff Team at r/3DS Discord")
                 .WithColor(Color.Red)
-                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1261059643061436437/deny.png")
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
                 .WithFooter("Thank you for your interest in becoming a part of the team!");
 
-            await user.SendMessageAsync(embed:notifBuilder.Build());
+            try
+            {
+                await user.SendMessageAsync(embed: notifBuilder.Build());
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the news.");
+                }
+            }
+
         }
 
         private async Task HandleAcceptCommand(ulong userId, SocketGuild guild)
@@ -1103,19 +1415,28 @@ namespace linkusBot.Modules
             var notifBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
                 .WithTitle($"__Your staff application__")
-                .WithDescription($"Hey there! Thanks for applying for our **Moderator** position! Our staff team has reviewed your application"+
-                " & have determined that you fit our requirements for the **Moderator** position. We’d love to extend you an offer to be apart of our staff team!" +
-                " *Woohoo!* <:angery:909725774326677525> Below are the next steps of the application process.\n\n" +
-                "Upon agreeing to this acceptance letter you’ll be automatically assigned the necessary roles to begin your staff training onboarding with our lead! " +
-                "Head on over to [#staff-guidelines](https://canary.discord.com/channels/1244328365129994240/1244328365901484228) then once finished reading make your way to [#new-staff](https://canary.discord.com/channels/1244328365129994240/1260656931626946590) to begin your staff onboarding with our lead!\n\n" +
+                .WithDescription($"Hey there! Thanks for applying! Our staff team has reviewed your application"+
+                " & have determined that you fit our requirements for **Moderator**" +
+                " *Woohoo!* <:honk:640354545461100606> Below are the next steps of the application process.\n\n" +
+                "You've automatically been assigned the necessary roles to begin your staff training! " +
+                "Head on over to [#discord-mod-talk](https://canary.discord.com/channels/248504507430993921/248509081789136896) to begin your staff journey!\n\n" +
                 "Thank you again for taking the time to apply to become a member of our talented staff team.\n\n" +
-                "Epic regards,\nStaff Team at r/3DS Discord")
+                "Best regards,\nStaff Team at r/3DS Discord")
                 .WithColor(Color.Green)
-                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1261325580272664586/accept.png")
-                //.WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+                .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("Thank you for your interest in becoming a part of the team!");
 
-            await user.SendMessageAsync(embed: notifBuilder.Build());
+            try
+            {
+                await user.SendMessageAsync(embed: notifBuilder.Build());
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the news. But they will still be assigned the roles.");
+                }
+            }
 
             await user.AddRoleAsync(1252237002707963977);
             await user.AddRoleAsync(1258719839946801212);
@@ -1154,7 +1475,7 @@ namespace linkusBot.Modules
             else await RespondToTextCommand(replyBuilder);
         }
 
-        public async Task HandleAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild)
+        public async Task HandleAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild, DiscordSocketClient client)
         {
             if (logEntry.User.Id == 1244323092935872532)
             {
@@ -1164,20 +1485,23 @@ namespace linkusBot.Modules
             switch (logEntry.Action) 
             {
                 case ActionType.Ban:
-                    await HandleBanAuditLog(logEntry, guild);
+                    await HandleBanAuditLog(logEntry, guild, client);
                     break;
                 case ActionType.Kick:
-                    await HandleKickAuditLog(logEntry, guild);
+                    await HandleKickAuditLog(logEntry, guild, client);
                     break;
                 default:
                     break;
             }
         }
 
-        private async Task HandleBanAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild)
+        private async Task HandleBanAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild, DiscordSocketClient client)
         {
             SocketBanAuditLogData data = logEntry.Data as SocketBanAuditLogData;
-            SocketUser bannedUser = data.Target.Value;
+            ulong bannedUserID = data.Target.Id;
+            SocketUser bannedUser = await client.GetUserAsync(bannedUserID) as SocketUser;
+
+            _modChannel = guild.GetTextChannel(modChannelID);
 
             //Create Punishment in DB and save
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -1206,29 +1530,31 @@ namespace linkusBot.Modules
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you've broken the rules of the server.__**")
                 .WithDescription($"You have been banned for __{logEntry.Reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "BAN", true)
-                .AddField("Note", "If you disagree with the action taken, please visit [this link.](https://docs.google.com/forms/d/16KdS0jBFY79g0rOOCmTS5qZ9_WLNzQqNOzmWrUbmwyU)", false)
+                .AddField("Note", "If you disagree with the action taken, please visit [this link.](https://forms.gle/CMm8jPAxQCSoGYVY8)", false)
                 .WithColor(Color.LightOrange)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
 
             //Send both
             punishment.notifMsgID = bannedUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
-            SocketTextChannel channel = guild.GetTextChannel(1244346391086764124);
-            await channel.SendMessageAsync(embed: responseBuilder.Build());
+            await _modChannel.SendMessageAsync(embed: responseBuilder.Build());
 
             punishments.punishmentList.Add(punishment);
 
             await SavePunishment(punishments);
         }
 
-        private async Task HandleKickAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild)
+        private async Task HandleKickAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild, DiscordSocketClient client)
         {
             SocketKickAuditLogData data = logEntry.Data as SocketKickAuditLogData;
-            SocketUser kickedUser = data.Target.Value;
+            ulong kickedUserID = data.Target.Id;
+            IUser kickedUser = await client.GetUserAsync(kickedUserID);
+
+            _modChannel = guild.GetTextChannel(modChannelID);
 
             //Create Punishment in DB
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -1256,7 +1582,7 @@ namespace linkusBot.Modules
             //Create User DM
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
-                .WithTitle("**__Ooops...It looks like you were being a silly willy & have broken the rules of the server.__**")
+                .WithTitle("**__Ooops...It looks like you've broken the rules of the server.__**")
                 .WithDescription($"You have been kicked for __{logEntry.Reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "KICK", true)
@@ -1267,14 +1593,14 @@ namespace linkusBot.Modules
 
             //Send both and save notification message ID
             punishment.notifMsgID = kickedUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
-            SocketTextChannel channel = guild.GetTextChannel(1244346391086764124);
-            await channel.SendMessageAsync(embed: responseBuilder.Build());
+            await _modChannel.SendMessageAsync(embed: responseBuilder.Build());
 
             //save punishment in DB
             punishments.punishmentList.Add(punishment);
 
             await SavePunishment(punishments);
         }
+
         public static string[] getTypeTexts(Punishment.Type type)
         {
             string[] strings = { "", "" };
@@ -1304,15 +1630,13 @@ namespace linkusBot.Modules
 
         public async Task SavePunishment(PunishmentFileRoot punishments)
         {
-            Console.WriteLine(RuntimeInformation.OSDescription);
-
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\punishments.json"), JsonConvert.SerializeObject(punishments, Formatting.Indented));
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                File.WriteAllText(string.Concat("~//linkus","//punishments.json"), JsonConvert.SerializeObject(punishments, Formatting.Indented));
+                File.WriteAllText("/home/vendell/inet/punishments.json", JsonConvert.SerializeObject(punishments, Formatting.Indented));
             }
         }
 
@@ -1321,7 +1645,7 @@ namespace linkusBot.Modules
             var errorBuilder = new EmbedBuilder()
                 .WithAuthor($"{_message.Author.Username} [{_message.Author.Id}]", _message.Author.GetAvatarUrl() ?? _message.Author.GetDefaultAvatarUrl())
                 .WithTitle("__Oops...I'm Not Familiar With That Command!__")
-                .WithDescription($":prohibited: You've entered an unknown command prompt! Try **?help**")
+                .WithDescription($":prohibited: You've entered an unknown command! Try **?help**")
                 .WithColor(Color.Red)
                 .WithCurrentTimestamp();
 

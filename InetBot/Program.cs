@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 
-namespace linkusBot
+namespace InetBot
 {
     class Program
     {
