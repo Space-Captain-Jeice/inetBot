@@ -26,8 +26,8 @@ namespace InetBot.Modules
 
         SocketRole modmailRole;
 
-        ulong modmailChannelId = 440118112977944578;
-        ulong modmailRoleId = 455414864056156170;
+        ulong modmailChannelId = 1141532366142189620;
+        //ulong modmailRoleId = 455414864056156170;
 
 
         public async Task HandleModMailMessage(SocketMessage message, SocketGuild guild, DiscordSocketClient client)
@@ -53,32 +53,11 @@ namespace InetBot.Modules
             sourceMessage = message;
             sourceGuild = guild;
             _client = client;
-            modmailRole = sourceGuild.GetRole(modmailRoleId);
+            //modmailRole = sourceGuild.GetRole(modmailRoleId);
 
             if (message.Content == "thanks inet")
             {
                 await message.Channel.SendMessageAsync("you're welcome!");
-            }
-
-            if (message.Content == "peanits")
-            {
-                try
-                {
-                    await client.GetUserAsync(550770264967741451).Result.SendMessageAsync("peanits");
-                }
-                catch (HttpException e)
-                {
-                    if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
-                    {
-                        EmbedBuilder embedBuilder = new EmbedBuilder()
-                            .WithTitle("AAAAAAAAAAAA")
-                            .WithDescription("cant :(")
-                            .WithColor(Color.Red);
-
-                        await sourceMessage.Channel.SendMessageAsync(embed:embedBuilder.Build());
-                    }
-                }
-
             }
 
             //for new modmails created from punishment notifications
@@ -288,7 +267,7 @@ namespace InetBot.Modules
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
-            await ticketChannel.SendMessageAsync(modmailRole.Mention);
+            //await ticketChannel.SendMessageAsync(modmailRole.Mention);
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
             await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build());
 
@@ -567,7 +546,7 @@ namespace InetBot.Modules
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
-            await ticketChannel.SendMessageAsync(modmailRole.Mention);
+            //await ticketChannel.SendMessageAsync(modmailRole.Mention);
             await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build());
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
 

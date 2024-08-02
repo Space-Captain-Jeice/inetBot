@@ -23,7 +23,7 @@ namespace InetBot
         //we pass these to other methods
         private SocketGuild _guild;
 
-        private ulong _guildId = 421017607710441492;
+        private ulong _guildId = 248504507430993921;
 
 
         public async Task Run()
@@ -237,7 +237,7 @@ namespace InetBot
             if (message.Content.StartsWith("?"))
             {
                 //await textCommands.HandleCommand(message, _guild, _client);
-                await commands.HandleCommand(message, _guild);
+                await commands.HandleCommand(message, _guild, _client);
             }
             else
             {
@@ -265,7 +265,7 @@ namespace InetBot
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
             Commands commands = new();
-            await commands.HandleCommand(command, _guild);
+            await commands.HandleCommand(command, _guild, _client);
         }
 
         private Task Log(LogMessage message)

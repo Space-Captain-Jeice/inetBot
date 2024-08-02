@@ -33,12 +33,12 @@ namespace InetBot.Modules
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny"];
         SocketTextChannel _modChannel;
 
-        private ulong modChannelID = 440118112977944578;
+        private ulong modChannelID = 259878856507392001;
 
         //
         // Summary:
         //     Handle a SocketSlashCommand.
-        public async Task HandleCommand(SocketSlashCommand command, SocketGuild guild)
+        public async Task HandleCommand(SocketSlashCommand command, SocketGuild guild, DiscordSocketClient client)
         {
             _command = command;
             _user = command.User;
@@ -65,7 +65,7 @@ namespace InetBot.Modules
 
             foreach (var item in guildUser1.Roles)
             {
-                if (item.Id == 455414864056156170) userHasPerms = true;
+                if (item.Id == 248505026471919618 || item.Id == 259871228406267905) userHasPerms = true;
             }
 
             switch (command.Data.Name)
@@ -79,7 +79,7 @@ namespace InetBot.Modules
                 case "unban":
                     ulong guildUserId = ulong.Parse(command.Data.Options.First().Value.ToString());
 
-                    await HandleUnbanCommand(guildUserId, guild);
+                    await HandleUnbanCommand(guildUserId, guild, client);
                     break;
                 case "kick":
                     guildUser = (SocketGuildUser)command.Data.Options.First().Value;
@@ -150,7 +150,7 @@ namespace InetBot.Modules
         //
         // Summary:
         //     Handle a SocketMessage command.
-        public async Task HandleCommand(SocketMessage message, SocketGuild guild)
+        public async Task HandleCommand(SocketMessage message, SocketGuild guild, DiscordSocketClient client)
         {
             _message = message;
             _user = message.Author;
@@ -179,7 +179,7 @@ namespace InetBot.Modules
 
             foreach (var item in guildUser1.Roles)
             {
-                if (item.Id == 455414864056156170) userHasPerms = true;
+                if (item.Id == 248505026471919618 || item.Id == 259871228406267905) userHasPerms = true;
             }
 
             EmbedBuilder noPermissionBuilder = new EmbedBuilder()
@@ -250,7 +250,7 @@ namespace InetBot.Modules
                     }
 
                     ulong guildUserId = ulong.Parse(message.Content.Remove(0, 7));
-                    await HandleUnbanCommand(guildUserId, guild);
+                    await HandleUnbanCommand(guildUserId, guild, client);
                     break;
                 case "kick":
                     if (!guildUser1.GuildPermissions.KickMembers)
@@ -697,9 +697,31 @@ namespace InetBot.Modules
             //await target.BanAsync(0, $"{reason} #{punishment.punishmentID}");
         }
 
-        private async Task HandleUnbanCommand(ulong guildUserId, SocketGuild guild)
+        private async Task HandleUnbanCommand(ulong guildUserId, SocketGuild guild, DiscordSocketClient client)
         {
-            //await guild.RemoveBanAsync(guildUserId);
+            var user = client.GetUserAsync(guildUserId).Result;
+
+            try
+            {
+                await guild.RemoveBanAsync(guildUserId);
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.UnknownBan)
+                {
+                    var notbannedBuilder = new EmbedBuilder()
+                        .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                        .WithTitle("__User not banned!__")
+                        .WithDescription($":x: `{user.Username}` [{user.Id}] is not banned or I couldn't find their ban.")
+                        .WithColor(Color.Green)
+                        .WithCurrentTimestamp();
+
+                    if (isSlashCommand) await RespondToSlashCommand(notbannedBuilder);
+                    else await RespondToTextCommand(notbannedBuilder);
+
+                    return;
+                }
+            }
 
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             List<Punishment> reversedPunishments = new();
@@ -718,8 +740,6 @@ namespace InetBot.Modules
                     {
                         if (item.punishmentID == reversedItem.punishmentID)
                         {
-                            var user = guild.GetUser(guildUserId);
-
                             var responseBuilder = new EmbedBuilder()
                                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                                 .WithTitle("__Unban applied successfully__")
@@ -734,7 +754,18 @@ namespace InetBot.Modules
                                 .WithColor(Color.Green)
                                 .WithCurrentTimestamp();
 
-                            await user.SendMessageAsync(embed: notifBuilder.Build());
+                            try
+                            {
+                                await user.SendMessageAsync(embed: notifBuilder.Build());
+                            }
+                            catch (HttpException e)
+                            {
+                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                {
+                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                }
+                            }
+
 
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                             else await RespondToTextCommand(responseBuilder);
@@ -858,7 +889,18 @@ namespace InetBot.Modules
                                 .WithColor(Color.Green)
                                 .WithCurrentTimestamp();
 
-                            await user.SendMessageAsync(embed: notifBuilder.Build());
+                            try
+                            {
+                                await user.SendMessageAsync(embed: notifBuilder.Build());
+                            }
+                            catch (HttpException e)
+                            {
+                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                {
+                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                }
+                            }
+
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                             else await RespondToTextCommand(responseBuilder);
 
@@ -892,7 +934,18 @@ namespace InetBot.Modules
                                         .WithColor(Color.Green)
                                         .WithCurrentTimestamp();
 
-                                    await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                                    try
+                                    {
+                                        await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                                    }
+                                    catch (HttpException e)
+                                    {
+                                        if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                        {
+                                            responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                        }
+                                    }
+
                                     if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                                     else await RespondToTextCommand(responseBuilder);
 
@@ -1025,11 +1078,36 @@ namespace InetBot.Modules
 
         private async Task HandleUnmuteCommand(SocketGuildUser guildUser, SocketGuild guild)
         {
-            //await guildUser.RemoveTimeOutAsync();
+            //try
+            //{
+
+            //}
+            //catch (HttpException)
+            //{
+
+            //    throw;
+            //}
+            if (guildUser.TimedOutUntil == null || guildUser.TimedOutUntil < DateTimeOffset.Now)
+            {
+                var notmutedBuilder = new EmbedBuilder()
+                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                    .WithTitle("__User not timed out!__")
+                    .WithDescription($":x: `{guildUser.Username}` [{guildUser.Id}] is not timed out.")
+                    .WithColor(Color.Green)
+                    .WithCurrentTimestamp();
+
+                if (isSlashCommand) await RespondToSlashCommand(notmutedBuilder);
+                else await RespondToTextCommand(notmutedBuilder);
+
+                return;
+            }
+            else
+            { 
+                await guildUser.RemoveTimeOutAsync();
+            }
 
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             List<Punishment> reversedPunishments = new();
-
 
             foreach (var item in punishments.punishmentList)
             {
@@ -1059,7 +1137,18 @@ namespace InetBot.Modules
                                 .WithColor(Color.Green)
                                 .WithCurrentTimestamp();
 
-                            await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                            try
+                            {
+                                await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                            }
+                            catch (HttpException e)
+                            {
+                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                {
+                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                }
+                            }
+
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                             else await RespondToTextCommand(responseBuilder);
 
@@ -1164,7 +1253,18 @@ namespace InetBot.Modules
                                 .WithColor(Color.Green)
                                 .WithCurrentTimestamp();
 
-                            await user.SendMessageAsync(embed: notifBuilder.Build());
+                            try
+                            {
+                                await user.SendMessageAsync(embed: notifBuilder.Build());
+                            }
+                            catch (HttpException e)
+                            {
+                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                {
+                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                }
+                            }
+
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                             else await RespondToTextCommand(responseBuilder);
 
@@ -1198,7 +1298,18 @@ namespace InetBot.Modules
                                         .WithColor(Color.Green)
                                         .WithCurrentTimestamp();
 
-                                    await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                                    try
+                                    {
+                                        await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                                    }
+                                    catch (HttpException e)
+                                    {
+                                        if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                        {
+                                            responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
+                                        }
+                                    }
+
                                     if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
                                     else await RespondToTextCommand(responseBuilder);
 
@@ -1438,8 +1549,8 @@ namespace InetBot.Modules
                 }
             }
 
-            await user.AddRoleAsync(1252237002707963977);
-            await user.AddRoleAsync(1258719839946801212);
+            await user.AddRoleAsync(248505366239772682);
+            await user.AddRoleAsync(1267031294030778368);
         }
 
         private async Task HandleCatCommand()
