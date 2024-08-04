@@ -35,6 +35,11 @@ namespace InetBot.Modules
 
             if (message.Author.IsBot) { return; }
 
+            if (message.Content == "thanks inet")
+            {
+                await message.Channel.SendMessageAsync("you're welcome!");
+            }
+
             //initialize a list of modmails and punishments for use across the class
             ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -47,18 +52,16 @@ namespace InetBot.Modules
                 }
                 reversedModMailTickets.Add(item);
             }
-            reversedModMailTickets.Reverse();
+            if (reversedModMailTickets.Count != 0)
+            {
+                reversedModMailTickets.Reverse();
+            }
 
             //we use these in other methods
             sourceMessage = message;
             sourceGuild = guild;
             _client = client;
             //modmailRole = sourceGuild.GetRole(modmailRoleId);
-
-            if (message.Content == "thanks inet")
-            {
-                await message.Channel.SendMessageAsync("you're welcome!");
-            }
 
             //for new modmails created from punishment notifications
             if (message.Reference != null && message.Channel is SocketDMChannel)
@@ -116,7 +119,7 @@ namespace InetBot.Modules
                 }
 
             }
-            else
+            else if (message.Channel is SocketThreadChannel)
             {
                 foreach (var item in reversedModMailTickets)
                 {
@@ -351,7 +354,7 @@ namespace InetBot.Modules
                 .WithColor(Color.Red);
 
             ComponentBuilder buttonBuilder = new ComponentBuilder()
-                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/modmailChannelId/{ticket.channelID}");
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");
 
             await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
 

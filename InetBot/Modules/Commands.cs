@@ -159,6 +159,8 @@ namespace InetBot.Modules
             string msg = message.Content.Remove(0, 1);
             string cmd = msg.Split(" ")[0].ToLower();
 
+            if (cmd == "") return;
+
             string reason;
             SocketGuildUser guildUser;
 
@@ -188,363 +190,366 @@ namespace InetBot.Modules
                 .WithDescription($"You do not have access to the command `?{cmd}`")
                 .WithColor(Color.Red);
 
-            switch (cmd)
+            if (char.IsLetter(cmd[0]))
             {
-                case "ban":
-                    if (!guildUser1.GuildPermissions.BanMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
-                    }
+                switch (cmd)
+                {
+                    case "ban":
+                        if (!guildUser1.GuildPermissions.BanMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
 
-                    if (message.Content.Length <= 5)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?ban <@user> <reason>`\n?ban <@177732626424135680> Said he would never post otters again.")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        if (message.Content.Length <= 5)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?ban <@user> <reason>`\n?ban <@177732626424135680> Said he would never post otters again.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    if (message.Content.Length == 26)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No reason provided!__")
-                            .WithDescription($":prohibited: Please provide a reason!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        if (message.Content.Length == 26)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No reason provided!__")
+                                .WithDescription($":prohibited: Please provide a reason!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    reason = message.Content.Remove(0, 27);
-                    
-                    await HandleBanCommand(guildUser, reason, guild);
-                    break;
-                case "unban":
-                    if (!guildUser1.GuildPermissions.BanMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        reason = message.Content.Remove(0, 27);
 
-                    }
+                        await HandleBanCommand(guildUser, reason, guild);
+                        break;
+                    case "unban":
+                        if (!guildUser1.GuildPermissions.BanMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 7)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?unban <user id>`\n?unban 177732626424135680")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 7)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?unban <user id>`\n?unban 177732626424135680")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    ulong guildUserId = ulong.Parse(message.Content.Remove(0, 7));
-                    await HandleUnbanCommand(guildUserId, guild, client);
-                    break;
-                case "kick":
-                    if (!guildUser1.GuildPermissions.KickMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    }
+                        ulong guildUserId = ulong.Parse(message.Content.Remove(0, 7));
+                        await HandleUnbanCommand(guildUserId, guild, client);
+                        break;
+                    case "kick":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 6)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?kick <@user> <reason>`\n?kick <@177732626424135680> Didnt post a daily otter picture.")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 6)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?kick <@user> <reason>`\n?kick <@177732626424135680> Didnt post a daily otter picture.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    if (message.Content.Length == 27)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No reason provided!__")
-                            .WithDescription($":prohibited: Please provide a reason!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                        await RespondToTextCommand(errorBuilder);
-                        return;
-                    }
+                        if (message.Content.Length == 27)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No reason provided!__")
+                                .WithDescription($":prohibited: Please provide a reason!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    reason = message.Content.Remove(0, 28);
+                            await RespondToTextCommand(errorBuilder);
+                            return;
+                        }
 
-                    await HandleKickCommand(guildUser, reason, guild);
-                    break;
-                case "unkick":
-                    if (!guildUser1.GuildPermissions.KickMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        reason = message.Content.Remove(0, 28);
 
-                    }
+                        await HandleKickCommand(guildUser, reason, guild);
+                        break;
+                    case "unkick":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 8)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?unkick user/id <@user/punishment id>`\n?unkick <@177732626424135680>\n?unkick 5")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 8)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?unkick user/id <@user/punishment id>`\n?unkick <@177732626424135680>\n?unkick 5")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = null;
-                    by = message.Content.Remove(0, 8).Split(" ")[0];
-                    if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    valueID = null;
-                    if (by == "id") valueID = message.Content.Remove(0, 8).Split(" ")[1];
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    await HandleUnkickCommand(guildUser, by, valueID, guild);
-                    break;
-                case "mute":
-                    if (!guildUser1.GuildPermissions.ModerateMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
-                    }
+                        guildUser = null;
+                        by = message.Content.Remove(0, 8).Split(" ")[0];
+                        if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        valueID = null;
+                        if (by == "id") valueID = message.Content.Remove(0, 8).Split(" ")[1];
 
-                    if (message.Content.Length <= 6)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?mute <@user> <duration> <reason>`\n?mute <@177732626424135680> 10m Spamming furry memes.")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        await HandleUnkickCommand(guildUser, by, valueID, guild);
+                        break;
+                    case "mute":
+                        if (!guildUser1.GuildPermissions.ModerateMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 6)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?mute <@user> <duration> <reason>`\n?mute <@177732626424135680> 10m Spamming furry memes.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    if (message.Content.Length == 27)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No reason provided!__")
-                            .WithDescription($":prohibited: Please provide a reason!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                        await RespondToTextCommand(errorBuilder);
-                        return;
-                    }
+                        if (message.Content.Length == 27)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No reason provided!__")
+                                .WithDescription($":prohibited: Please provide a reason!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    var duration = message.Content.Remove(0, 28).Split(" ")[0];
-                    reason = message.Content.Remove(0, 28 + duration.Length + 1);
+                            await RespondToTextCommand(errorBuilder);
+                            return;
+                        }
 
-                    await HandleMuteCommand(guildUser, duration, reason, guild);
-                    break;
-                case "unmute":
-                    if (!guildUser1.GuildPermissions.ModerateMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
-                    }
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        var duration = message.Content.Remove(0, 28).Split(" ")[0];
+                        reason = message.Content.Remove(0, 28 + duration.Length + 1);
 
-                    if (message.Content.Length <= 8)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?unmute <@user>\n`?unmute <@177732626424135680>")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        await HandleMuteCommand(guildUser, duration, reason, guild);
+                        break;
+                    case "unmute":
+                        if (!guildUser1.GuildPermissions.ModerateMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 8)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?unmute <@user>\n`?unmute <@177732626424135680>")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    await HandleUnmuteCommand(guildUser, guild);
-                    break;
-                case "warn":
-                    if (!guildUser1.GuildPermissions.KickMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
 
-                    }
+                        await HandleUnmuteCommand(guildUser, guild);
+                        break;
+                    case "warn":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 5)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?warn <@user> <reason>`\n?warn <@177732626424135680> Sending a risque meme.")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 5)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?warn <@user> <reason>`\n?warn <@177732626424135680> Sending a risque meme.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    if (message.Content.Length == 27)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No reason provided!__")
-                            .WithDescription($":prohibited: Please provide a reason!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                        await RespondToTextCommand(errorBuilder);
-                        return;
-                    }
+                        if (message.Content.Length == 27)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No reason provided!__")
+                                .WithDescription($":prohibited: Please provide a reason!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    reason = message.Content.Remove(0, 28);
+                            await RespondToTextCommand(errorBuilder);
+                            return;
+                        }
 
-                    await HandleWarnCommand(guildUser, reason, guild);
-                    break;
-                case "unwarn":
-                    if (!guildUser1.GuildPermissions.KickMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        reason = message.Content.Remove(0, 28);
 
-                    }
+                        await HandleWarnCommand(guildUser, reason, guild);
+                        break;
+                    case "unwarn":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 8)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?unwarn user/id <@user/punishment id>`\n?unwarn <@177732626424135680>\n?unwarn 68")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 8)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?unwarn user/id <@user/punishment id>`\n?unwarn <@177732626424135680>\n?unwarn 68")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = null;
-                    by = message.Content.Remove(0, 8).Split(" ")[0];
-                    if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    valueID = null;
-                    if (by == "id") valueID = message.Content.Remove(0, 8).Split(" ")[1];
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    await HandleUnwarnCommand(guildUser, by, valueID, guild);
-                    break;
-                case "getpunishments":
-                    if (!guildUser1.GuildPermissions.KickMembers)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
+                        guildUser = null;
+                        by = message.Content.Remove(0, 8).Split(" ")[0];
+                        if (by == "user") guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        valueID = null;
+                        if (by == "id") valueID = message.Content.Remove(0, 8).Split(" ")[1];
 
-                    }
+                        await HandleUnwarnCommand(guildUser, by, valueID, guild);
+                        break;
+                    case "getpunishments":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
 
-                    if (message.Content.Length <= 16)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__Syntax:__")
-                            .WithDescription($"`?getpunishments mod/target/id <@mod/@target/punishment id>`\n?getpunishments mod <@177732626424135680>\n?getpunishments target <@246050963922616320>\n?getpunishments id 45")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        }
 
-                        await _userMessage.ReplyAsync(embed: errorBuilder.Build());
-                        return;
-                    }
+                        if (message.Content.Length <= 16)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?getpunishments mod/target/id <@mod/@target/punishment id>`\n?getpunishments mod <@177732626424135680>\n?getpunishments target <@246050963922616320>\n?getpunishments id 45")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    guildUser = null;
-                    by = message.Content.Remove(0, 16).Split(" ")[0];
-                    if (by == "mod") by = "moderator";
-                    if (by == "target" || by == "moderator") guildUser = message.MentionedUsers.First() as SocketGuildUser;
-                    valueID = null;
-                    if (by == "id") valueID = message.Content.Remove(0, 16).Split(" ")[1];
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
 
-                    await HandleGetpunishmentsCommand(guildUser, by, valueID, guild);
-                    break;
-                case "deny":
-                    if (!userHasPerms)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
-                    }
+                        guildUser = null;
+                        by = message.Content.Remove(0, 16).Split(" ")[0];
+                        if (by == "mod") by = "moderator";
+                        if (by == "target" || by == "moderator") guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        valueID = null;
+                        if (by == "id") valueID = message.Content.Remove(0, 16).Split(" ")[1];
 
-                    if (message.Content.Length <= 5)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No member provided!__")
-                            .WithDescription($":prohibited: Please provide a member!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        await HandleGetpunishmentsCommand(guildUser, by, valueID, guild);
+                        break;
+                    case "deny":
+                        if (!userHasPerms)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
 
-                        await RespondToTextCommand(errorBuilder);
-                        return;
-                    }
+                        if (message.Content.Length <= 5)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No member provided!__")
+                                .WithDescription($":prohibited: Please provide a member!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    id = ulong.Parse(message.Content.Remove(0, 6));
-                    
-                    await HandleDenyCommand(id, guild);
-                    break;
-                case "accept":
-                    if (!userHasPerms)
-                    {
-                        await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
-                        return;
-                    }
+                            await RespondToTextCommand(errorBuilder);
+                            return;
+                        }
 
-                    if (message.Content.Length <= 7)
-                    {
-                        var errorBuilder = new EmbedBuilder()
-                            .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
-                            .WithTitle("__No member provided!__")
-                            .WithDescription($":prohibited: Please provide a member!")
-                            .WithColor(Color.Red)
-                            .WithCurrentTimestamp();
+                        id = ulong.Parse(message.Content.Remove(0, 6));
 
-                        await RespondToTextCommand(errorBuilder);
-                        return;
-                    }
+                        await HandleDenyCommand(id, guild);
+                        break;
+                    case "accept":
+                        if (!userHasPerms)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
 
-                    id = ulong.Parse(message.Content.Remove(0, 8));
+                        if (message.Content.Length <= 7)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__No member provided!__")
+                                .WithDescription($":prohibited: Please provide a member!")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
 
-                    await HandleAcceptCommand(id, guild);
-                    break;
-                case "help":
-                    guildUser = message.Author as SocketGuildUser;
-                    await HandleHelpCommand(guildUser);
-                    break;
-                case "cat":
-                    await HandleCatCommand(); 
-                    break;
-                case "dog":
-                    await HandleDogCommand();
-                    break;
-                case "otter":
-                    await HandleOtterCommand();
-                    break;
-                default:
-                    await HandleUnknownCommand();
-                    break;
+                            await RespondToTextCommand(errorBuilder);
+                            return;
+                        }
+
+                        id = ulong.Parse(message.Content.Remove(0, 8));
+
+                        await HandleAcceptCommand(id, guild);
+                        break;
+                    case "help":
+                        guildUser = message.Author as SocketGuildUser;
+                        await HandleHelpCommand(guildUser);
+                        break;
+                    case "cat":
+                        await HandleCatCommand();
+                        break;
+                    case "dog":
+                        await HandleDogCommand();
+                        break;
+                    case "otter":
+                        await HandleOtterCommand();
+                        break;
+                    default:
+                        await HandleUnknownCommand();
+                        break;
+                }
             }
         }
 
@@ -576,7 +581,7 @@ namespace InetBot.Modules
 
         private async Task HandleHelpCommand(SocketGuildUser guildUser)
         {
-            if (userHasPerms)
+            if (guildUser.GuildPermissions.KickMembers)
             {
                 var modReplyBuilder = new EmbedBuilder()
                     .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
@@ -694,7 +699,7 @@ namespace InetBot.Modules
 
             await SavePunishment(punishments);
 
-            //await target.BanAsync(0, $"{reason} #{punishment.punishmentID}");
+            await guildUser.BanAsync(0, $"{reason} #{punishment.punishmentID}");
         }
 
         private async Task HandleUnbanCommand(ulong guildUserId, SocketGuild guild, DiscordSocketClient client)
@@ -849,7 +854,6 @@ namespace InetBot.Modules
             punishments.punishmentList.Add(punishment);
 
             await SavePunishment(punishments);
-
 
             await guildUser.KickAsync($"{reason} #{punishment.punishmentID}");
         }
@@ -1078,15 +1082,6 @@ namespace InetBot.Modules
 
         private async Task HandleUnmuteCommand(SocketGuildUser guildUser, SocketGuild guild)
         {
-            //try
-            //{
-
-            //}
-            //catch (HttpException)
-            //{
-
-            //    throw;
-            //}
             if (guildUser.TimedOutUntil == null || guildUser.TimedOutUntil < DateTimeOffset.Now)
             {
                 var notmutedBuilder = new EmbedBuilder()
@@ -1192,7 +1187,7 @@ namespace InetBot.Modules
                 .WithDescription($"You have been warned for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "WARN", true)
-                .AddField("Note", "This is just a warning, but if you keep breaking the rules, you may get further punishment. If you disagree with the action taken, please visit [this link.](https://docs.google.com/forms/d/16KdS0jBFY79g0rOOCmTS5qZ9_WLNzQqNOzmWrUbmwyU)", false)
+                .AddField("Note", "This is just a warning, but if you keep breaking the rules, you may get further punishment. If you disagree with the action taken, please reply to this message to open a ModMail ticket. ", false)
                 .WithColor(Color.LightOrange)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
@@ -1555,6 +1550,14 @@ namespace InetBot.Modules
 
         private async Task HandleCatCommand()
         {
+            //var replyBuilder = new EmbedBuilder()
+            //    .WithTitle($"Not available!")
+            //    .WithImageUrl($"cataas.com is down currently. Please try ?dog or ?otter instead!")
+            //    .WithFooter("Powered by cataas.com");
+
+            //if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            //else await RespondToTextCommand(replyBuilder);
+
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"Heres your random cat {_message.Author.Username}!")
                 .WithImageUrl($"https://cataas.com/cat/{Cat.GetRandomCat()._id}")
@@ -1580,7 +1583,7 @@ namespace InetBot.Modules
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"Heres your random otter {_message.Author.Username}!")
                 .WithImageUrl($"https://vendell.online/img/otter/{Otter.GetRandomOtter()}")
-                .WithFooter("Powered by vendell.online");
+                .WithFooter("Powered by vendell :)");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
             else await RespondToTextCommand(replyBuilder);

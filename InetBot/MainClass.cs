@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using InetBot.Modules;
 using InetBot.Data;
 using System.Security;
+using System.Timers;
 
 namespace InetBot
 {
@@ -25,6 +26,8 @@ namespace InetBot
 
         private ulong _guildId = 248504507430993921;
 
+        private static System.Timers.Timer activityTimer = new();
+        private int _activityCount = 0;
 
         public async Task Run()
         {
@@ -37,7 +40,7 @@ namespace InetBot
             _client.Log += Log;
             _client.Ready += Client_Ready;
 
-            await _client.SetGameAsync("Waiting to help in /r/3DS", null, ActivityType.CustomStatus);
+            await _client.SetGameAsync("Waiting for ?help in /r/3DS", null, ActivityType.CustomStatus);
 
             _client.MessageReceived += MessageRecievedHandler;
             _client.AuditLogCreated += AuditLogCreated;
@@ -61,8 +64,28 @@ namespace InetBot
             //await commands.HandleAuditLog(logEntry, guild, _client);
         }
 
+        private async void SetActivity(Object source, ElapsedEventArgs e)
+        {
+            switch (_activityCount)
+            {
+                case 0:
+                    await _client.SetGameAsync("DM me for Modmail!", null, ActivityType.CustomStatus);
+                    _activityCount++;
+                    break;
+                case 1:
+                    await _client.SetGameAsync("Waiting for ?help in /r/3DS", null, ActivityType.CustomStatus);
+                    _activityCount = 0;
+                    break;
+            }
+        }
+
         private async Task Client_Ready()
         {
+            activityTimer.Interval = 30000;
+            activityTimer.Elapsed += SetActivity;
+            activityTimer.AutoReset = true;
+            activityTimer.Enabled = true;
+
             _guild = _client.GetGuild(_guildId);
             
             Console.ResetColor();
@@ -195,7 +218,7 @@ namespace InetBot
             {
                 //await _guild.CreateApplicationCommandAsync(kickCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unkickCommand.Build());
-
+                
                 //await _guild.CreateApplicationCommandAsync(banCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unbanCommand.Build());
 
@@ -233,6 +256,11 @@ namespace InetBot
             ModMail modMail = new();
             //TextCommands textCommands = new();
             Commands commands = new Commands();
+
+            if (message.Channel.Id == 259878856507392001 && message.Author.Id == 271382258525405184 && message.Embeds.FirstOrDefault().Author.Value.Name.Contains("Inet-kun"))
+            {
+                message.DeleteAsync();
+            }
 
             if (message.Content.StartsWith("?"))
             {
