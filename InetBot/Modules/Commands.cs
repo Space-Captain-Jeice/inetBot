@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -27,13 +29,18 @@ namespace InetBot.Modules
         SocketUser _user;
         SocketUserMessage _userMessage;
 
+
+
         string by = "";
         string valueID = "";
 
-        string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny"];
+        string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
         SocketTextChannel _modChannel;
-
+        
+        //3ds:
         private ulong modChannelID = 259878856507392001;
+        //tsd:
+        //private ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
@@ -132,6 +139,13 @@ namespace InetBot.Modules
 
                     await HandleGetpunishmentsCommand(guildUser, by, valueID, guild);
                     break;
+                case "role":
+                    string action = command.Data.Options.First().Name;
+                    guildUser = (SocketGuildUser)command.Data.Options.First().Options.First().Value;
+                    IRole role = (IRole)command.Data.Options.First().Options.ElementAt(1).Value;
+
+                    await HandleRoleCommand(action, guildUser, role);
+                    break;
                 case "deny":
                     id = ulong.Parse(command.Data.Options.First().Value.ToString());
                     await HandleDenyCommand(id, guild);
@@ -190,8 +204,9 @@ namespace InetBot.Modules
                 .WithDescription($"You do not have access to the command `?{cmd}`")
                 .WithColor(Color.Red);
 
-            if (char.IsLetter(cmd[0]))
-            {
+            if (char.IsLetterOrDigit(cmd[0]))
+            { 
+
                 switch (cmd)
                 {
                     case "ban":
@@ -537,6 +552,34 @@ namespace InetBot.Modules
                         guildUser = message.Author as SocketGuildUser;
                         await HandleHelpCommand(guildUser);
                         break;
+                    case "ping":
+                        await HandlePingCommand();
+                        break;
+                    case "format":
+                    case "formatting":
+                        await HandleFormatCommand();
+                        break;
+                    case "piracy":
+                        await HandlePiracyCommand();
+                        break;
+                    case "tnips":
+                    case "panel":
+                    case "ips":
+                    case "tn":
+                        await HandleScreenCommand();
+                        break;
+                    case "citra":
+                    case "emulator":
+                    case "emulation":
+                        await HandleCitraCommand();
+                        break;
+                    case "guide":
+                        await HandleGuideCommand();
+                        break;
+                    case "3ds":
+                    case "n3ds":
+                        await HandleDiffCommand();
+                        break;
                     case "cat":
                         await HandleCatCommand();
                         break;
@@ -545,6 +588,10 @@ namespace InetBot.Modules
                         break;
                     case "otter":
                         await HandleOtterCommand();
+                        break;
+                    case "bird":
+                    case "birb":
+                        await HandleBirdCommand();
                         break;
                     default:
                         await HandleUnknownCommand();
@@ -620,8 +667,12 @@ namespace InetBot.Modules
                 .WithTitle("Inet-Kun User Help")
                 .WithDescription("**Inet is your Fun and Modmail bot for the r/3DS Discord!**\n" +
                 "Here is an overview of the commands with examples!\n\n" +
-                "`?otter/dog/cat`\n" + 
-                "Gets a random image of your favourite critter.\n");
+                "`?otter/dog/cat/bird`\n" + 
+                "Gets a random image of your favourite critter.\n" +
+                "`?format/piracy/panel/citra/guide/n3ds`\n" +
+                "Provides information about various topics.\n" +
+                "`?ping`\n" +
+                "Get the bots ping to discord.");
 
             if (isSlashCommand) await RespondToSlashCommand(userReplyBuilder);
             else await RespondToTextCommand(userReplyBuilder);
@@ -1463,6 +1514,138 @@ namespace InetBot.Modules
             }
         }
 
+        private async Task HandleRoleCommand(string action, SocketGuildUser guildUser, IRole role)
+        {
+
+            if (!userHasPerms)
+            {
+                EmbedBuilder noPermissionBuilder = new EmbedBuilder()
+                    .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                    .WithTitle("__No permission!__")
+                    .WithDescription($"You do not have access to the command `/role`")
+                    .WithCurrentTimestamp()
+                    .WithColor(Color.Red);
+
+                await _command.RespondAsync(embed: noPermissionBuilder.Build(), ephemeral: true);
+
+                return;
+            }
+
+            switch (action)
+            {
+                case "add":
+
+                    if (role.Id == 259871228406267905)
+                    {
+                        EmbedBuilder badRoleBuilder = new EmbedBuilder()
+                            .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                            .WithTitle("__No permission!__")
+                            .WithDescription($"You cannot assign that role!")
+                            .WithCurrentTimestamp()
+                            .WithColor(Color.Red);
+
+                        if (isSlashCommand) await RespondToSlashCommand(badRoleBuilder);
+                        else await RespondToTextCommand(badRoleBuilder);
+
+                        return;
+                    }
+
+                    if (guildUser.Roles.Contains(role))
+                    {
+                        EmbedBuilder badRoleBuilder = new EmbedBuilder()
+                            .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                            .WithTitle("__Can't give role!__")
+                            .WithDescription($"*{guildUser.Username} `[{guildUser.Id}]`* already has {role.Mention}. Try removing it first.")
+                            .WithCurrentTimestamp()
+                            .WithColor(Color.Red);
+
+                        await _command.RespondAsync(embed: badRoleBuilder.Build(), ephemeral: true);
+
+                        return;
+                    }
+
+                    try
+                    {
+                        await guildUser.AddRoleAsync(role);
+                    }
+                    catch (Exception ex)
+                    {
+                        var failBuilder = new EmbedBuilder()
+                            .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                            .WithTitle($"Something went wrong!")
+                            .WithDescription($"Couldnt give role {role.Mention} to *{guildUser.Username} `[{guildUser.Id}]`*.\n" +
+                            $"Error: `{ex.Message}`")
+                            .WithColor(Color.Red);
+
+                        if (isSlashCommand) await RespondToSlashCommand(failBuilder);
+                        else await RespondToTextCommand(failBuilder);
+
+                        Console.WriteLine(ex.ToString());
+                        return;
+                    }
+
+                    var addedBuilder = new EmbedBuilder()
+                        .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                        .WithTitle($"Role added!")
+                        .WithDescription($"You have successfully added {role.Mention} to *{guildUser.Username} `[{guildUser.Id}]`*.")
+                        .WithColor(role.Color);
+
+                    if (isSlashCommand) await RespondToSlashCommand(addedBuilder);
+                    else await RespondToTextCommand(addedBuilder);
+
+                    break;
+                case "remove":
+
+                    if (!guildUser.Roles.Contains(role))
+                    {
+                        EmbedBuilder badRoleBuilder = new EmbedBuilder()
+                            .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                            .WithTitle("__Can't remove role!__")
+                            .WithDescription($"*{guildUser.Username} `[{guildUser.Id}]`* does not have {role.Mention}. Try adding it first.")
+                            .WithCurrentTimestamp()
+                            .WithColor(Color.Red);
+
+                        await _command.RespondAsync(embed: badRoleBuilder.Build(), ephemeral: true);
+
+                        return;
+                    }
+
+                    try
+                    {
+                        await guildUser.RemoveRoleAsync(role);
+                    }
+                    catch (Exception ex)
+                    {
+                        var failBuilder = new EmbedBuilder()
+                            .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                            .WithTitle($"Something went wrong!")
+                            .WithDescription($"Couldnt remove {role.Mention} from *{guildUser.Username} `[{guildUser.Id}]`*.\n" +
+                            $"Error: `{ex.Message}`")
+                            .WithColor(Color.Red);
+
+                        if (isSlashCommand) await RespondToSlashCommand(failBuilder);
+                        else await RespondToTextCommand(failBuilder);
+
+                        Console.WriteLine(ex.ToString());
+                        return;
+                    }
+
+                    var removedBuilder = new EmbedBuilder()
+                        .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                        .WithTitle($"Role removed!")
+                        .WithDescription($"You have successfully removed {role.Mention} from *{guildUser.Username} `[{guildUser.Id}]`*.")
+                        .WithColor(role.Color);
+
+                    if (isSlashCommand) await RespondToSlashCommand(removedBuilder);
+                    else await RespondToTextCommand(removedBuilder);
+
+                    break;
+            }
+
+
+
+        }
+
         private async Task HandleDenyCommand(ulong userId, SocketGuild guild)
         {
             SocketUser user;
@@ -1548,6 +1731,111 @@ namespace InetBot.Modules
             await user.AddRoleAsync(1267031294030778368);
         }
 
+        private async Task HandlePingCommand()
+        {
+            Ping ping = new Ping();
+            List<long> pings = new List<long>();
+
+            for (int i = 0; i < 4; i++)
+            {
+                PingReply reply = ping.Send("stockholm5485.discord.gg", 10000);
+                pings.Add(reply.RoundtripTime);
+            }
+
+            var responseBuilder = new EmbedBuilder()
+                .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                .WithTitle(":ping_pong: Pong!")
+                .WithDescription($"My current ping: **{Math.Truncate(pings.Average())}**")
+                .WithFooter("Average of 5 pings to stockholm5485.discord.gg")
+                .WithColor(Color.Green)
+                .WithCurrentTimestamp();
+
+            if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
+            else await RespondToTextCommand(responseBuilder);
+        }
+
+        private async Task HandleFormatCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"About SD-Card formatting")
+                .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
+                $"The 3DS family can only read SD-Cards if theyre formatted in **FAT32**.\n" +
+                $"For cards __under__ **32GB** this can be achieved with any standard tool.\n" +
+                $"For cards __above__ **32GB** on Windows you will need a special tool,\n which can be downloaded [here](http://ridgecrop.co.uk/index.htm?guiformat.htm).\n" +
+                $"**64GB** cards need an **Allocation unit size** of __32KB/32768 bytes__,\n **128GB** need __64KB/65536 bytes__.\n" +
+                $"Cards above **128GB** are __not__ recommended because of performance issues.");
+
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandlePiracyCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Piracy")
+                .WithDescription("Piracy is **illegal** and against **Discord TOS**, so we do NOT allow any discussion of it.\n\n" +
+                "Homebrew and 'hacking' does not automatically mean illegally downloading games or any other copyrighted content.\n" +
+                "Piracy paints the homebrew community in a bad light in legislators and publishers eyes, and gives console makers more incentive to lock down their systems, making the jobs of volunteer " +
+                "homebrew developers harder and harder.\n\n" +
+                "Any discussion of piracy or mentioning/sharing links to sites/applications enabling it will be met with a warning, pushback will lead to harsher punishments.");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleScreenCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About TN vs IPS panels")
+                .WithDescription("In short, which type of screen your console has **does not matter** in 99% of situations.\n\n" +
+                "TN panels only drawback to IPS is reduced colour accuracy at extreme viewing angles. You basically need to be looking at your 3DS from the side to be able to tell.\n" +
+                "IPS panels also use slightly more power, reducing battery life.\n" +
+                "Think about it this way: if you need to ask someone else what sort of panel your console has, does it really matter? You couldn't immediately tell and your gaming expirence has been just as good not knowing.\n\n" +
+                "If you **really** need to know what panels your console has, you can check on [3DSident](https://github.com/joel16/3DSident/releases)");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleCitraCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Citra and emulation")
+                .WithDescription("Since the lawsuit against Citra developers, Nintendo has been attacking communities providing support for Citra and other 3DS emulators.\n\n" +
+                "We will **not help you with emulating the 3DS** on other devices, we only support hacking actual 3DS systems.\n");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleGuideCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About guides")
+                .WithDescription("Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
+                $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
+                $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still deceide to follow one, you are **on your own** as " +
+                $"we will __not__ be able to offer help in case something goes wrong.");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleDiffCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About 'New'3DS vs 'Old'3DS")
+                .WithDescription("A detailed description of all the models can be found in the **[FAQ](https://canary.discord.com/channels/248504507430993921/1270692745056485417/1270702483966005290)**\n\n" +
+                "Briefly explained, the **New 3DS** models have 6 times the CPU power, and double the RAM compared to 'Old' models. New models have **faster game load times**, " +
+                "**face tracking** for a better 3D expirence and some **exclusive games** that use the new models ZL/ZR buttons and the 'C-Stick'. Noteworthy is that the Old 3DS uses **full sized** SD cards while " +
+                "the new models use **microSD** cards.\n" +
+                "You can also customize your New 3DS **non-XL** console with **faceplates** in different designs.");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
         private async Task HandleCatCommand()
         {
             //var replyBuilder = new EmbedBuilder()
@@ -1587,6 +1875,18 @@ namespace InetBot.Modules
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
             else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleBirdCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"Heres your random bird {_message.Author.Username}!")
+                .WithImageUrl($"{Bird.GetRandomBird().image}")
+                .WithFooter("Powered by some-random-api.com");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+
         }
 
         public async Task HandleAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild, DiscordSocketClient client)

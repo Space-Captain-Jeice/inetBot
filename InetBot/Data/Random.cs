@@ -57,6 +57,7 @@ namespace InetBot.Data
 
     public class Otter
     {
+
         public static string GetRandomOtter()
         {
             HttpClient client = new HttpClient();
@@ -86,4 +87,24 @@ namespace InetBot.Data
         }
     }
 
+    public class Bird
+    {
+        public string image;
+
+        public static Bird GetRandomBird()
+        {
+            HttpClient client = new HttpClient();
+            using (HttpResponseMessage response = client.GetAsync("https://some-random-api.com/animal/bird").Result)
+            {
+                using (Stream stream = response.Content.ReadAsStream())
+                {
+                    StreamReader reader = new StreamReader(stream, true);
+                    String responseString = reader.ReadToEnd();
+                    Bird bird = JsonConvert.DeserializeObject<Bird>(responseString);
+
+                    return bird;
+                }
+            }
+        }
+    }
 }

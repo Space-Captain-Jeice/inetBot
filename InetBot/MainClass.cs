@@ -24,7 +24,10 @@ namespace InetBot
         //we pass these to other methods
         private SocketGuild _guild;
 
+        //3ds
         private ulong _guildId = 248504507430993921;
+        //tsd
+        //private ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
@@ -74,8 +77,13 @@ namespace InetBot
                     break;
                 case 1:
                     await _client.SetGameAsync("Waiting for ?help in /r/3DS", null, ActivityType.CustomStatus);
+                    _activityCount++;
+                    break;
+                case 2:
+                    await _client.SetGameAsync("Waiting for D3R-B0T", null, ActivityType.CustomStatus);
                     _activityCount = 0;
                     break;
+
             }
         }
 
@@ -87,7 +95,7 @@ namespace InetBot
             activityTimer.Enabled = true;
 
             _guild = _client.GetGuild(_guildId);
-            
+
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Client Ready! Version 0.001");
@@ -96,6 +104,8 @@ namespace InetBot
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.Write(_guild.Name + "\n");
             Console.ResetColor();
+
+            var asd = _guild.GetTextChannel(259878856507392001).SendMessageAsync("vendell when are you making me better");
 
             //var emote = Emote.Parse("<:o3ds:1261080733913710633>");
             //await _guild.GetTextChannel(1244346826174369862).GetMessageAsync(1260477725118824478).Result.AddReactionAsync(emote);
@@ -178,39 +188,58 @@ namespace InetBot
             .WithDefaultMemberPermissions(GuildPermission.KickMembers)
             .WithDescription("Gets a punishment by ID or list of punishments by target user or moderator.")
             .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("id")
-                    .WithDescription("The punishments ID")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("id", ApplicationCommandOptionType.String, "ID", isRequired: true)
+                .WithName("id")
+                .WithDescription("The punishments ID")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("id", ApplicationCommandOptionType.String, "ID", isRequired: true)
                 )
             .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("moderator")
-                    .WithDescription("The acting moderator")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("mod", ApplicationCommandOptionType.User, "user", isRequired: true)
+                .WithName("moderator")
+                .WithDescription("The acting moderator")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("mod", ApplicationCommandOptionType.User, "user", isRequired: true)
                 )
             .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("target")
-                    .WithDescription("The target")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("target", ApplicationCommandOptionType.User, "target", isRequired: true)
+                .WithName("target")
+                .WithDescription("The target")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("target", ApplicationCommandOptionType.User, "target", isRequired: true)
+                );
+
+            var roleCommand = new SlashCommandBuilder()
+            .WithName("role")
+            .WithDefaultMemberPermissions(GuildPermission.BanMembers)
+            .WithDescription("Add or remove a role to/from a member. Only usable by Head Moderators and Admins")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("add")
+                .WithDescription("Add a role.")
+                .WithType (ApplicationCommandOptionType.SubCommand)
+                .AddOption("target", ApplicationCommandOptionType.User, "The user who you want to add a role to.", isRequired: true)
+                .AddOption("role", ApplicationCommandOptionType.Role, "The role you want to add.", isRequired: true)
+                )
+            .AddOption(new SlashCommandOptionBuilder ()
+                .WithName("remove")
+                .WithDescription("Remove a role.")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("target", ApplicationCommandOptionType.User, "The user who you want to remove a role from.", isRequired: true)
+                .AddOption("role", ApplicationCommandOptionType.Role, "The role you want to remove.", isRequired: true)
                 );
 
             var acceptCommand = new SlashCommandBuilder()
-                .WithName("accept")
-                .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
-                .WithDescription("Accept a staff application.")
-                .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
+            .WithName("accept")
+            .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
+            .WithDescription("Accept a staff application.")
+            .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
 
             var denyCommand = new SlashCommandBuilder()
-                .WithName("deny")
-                .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
-                .WithDescription("Deny a staff application.")
-                .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
+            .WithName("deny")
+            .WithDefaultMemberPermissions(GuildPermission.ManageRoles)
+            .WithDescription("Deny a staff application.")
+            .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
 
             var helpCommand = new SlashCommandBuilder()
-                .WithName("help")
-                .WithDescription("Shows a help message.");
+            .WithName("help")
+            .WithDescription("Shows a help message.");
 
             #endregion
 
@@ -218,7 +247,7 @@ namespace InetBot
             {
                 //await _guild.CreateApplicationCommandAsync(kickCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unkickCommand.Build());
-                
+
                 //await _guild.CreateApplicationCommandAsync(banCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unbanCommand.Build());
 
@@ -234,6 +263,8 @@ namespace InetBot
                 //await _guild.CreateApplicationCommandAsync(denyCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(helpCommand.Build());
+
+                //await _guild.CreateApplicationCommandAsync(roleCommand.Build());
             }
             catch (ApplicationCommandException ex)
             {

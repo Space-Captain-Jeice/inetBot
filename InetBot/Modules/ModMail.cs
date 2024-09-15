@@ -26,7 +26,11 @@ namespace InetBot.Modules
 
         SocketRole modmailRole;
 
+        //3ds
         ulong modmailChannelId = 1141532366142189620;
+        //tsd
+        //ulong modmailChannelId = 440118112977944578;
+
         //ulong modmailRoleId = 455414864056156170;
 
 
@@ -270,9 +274,12 @@ namespace InetBot.Modules
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
+            ComponentBuilder buttonBuilder = new ComponentBuilder()
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");        
+
             //await ticketChannel.SendMessageAsync(modmailRole.Mention);
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
-            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build());
+            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
 
             await sourceMessage.Author.SendMessageAsync(embed: replyEmbedBuilder.Build());
 
