@@ -1,17 +1,10 @@
 ﻿using Discord;
 using Discord.Net;
-using Discord.Rest;
 using Discord.WebSocket;
 using InetBot.Data;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Net;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InetBot.Modules
 {
@@ -27,9 +20,9 @@ namespace InetBot.Modules
         SocketRole modmailRole;
 
         //3ds
-        ulong modmailChannelId = 1141532366142189620;
+        //ulong modmailChannelId = 1141532366142189620;
         //tsd
-        //ulong modmailChannelId = 440118112977944578;
+        ulong modmailChannelId = 440118112977944578;
 
         //ulong modmailRoleId = 455414864056156170;
 
@@ -39,10 +32,9 @@ namespace InetBot.Modules
 
             if (message.Author.IsBot) { return; }
 
-            if (message.Content == "thanks inet")
-            {
-                await message.Channel.SendMessageAsync("you're welcome!");
-            }
+            if (message.Content == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
+
+            if (message.Content.ToLower().Contains("skibidi")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
 
             //initialize a list of modmails and punishments for use across the class
             ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
@@ -105,23 +97,30 @@ namespace InetBot.Modules
             }
             //for USER replies to existing open modmails
             else if (message.Reference == null && message.Channel is SocketDMChannel)
-            {                
+            {
                 if (ticketFileRoot.ModMailTicketList.Count == 0) await CreateModMail();
+
+                ModMailTicket? foundTicket = null;
 
                 foreach (var item in reversedModMailTickets)
                 {
                     if (item.isOpen == true && item.userID == message.Author.Id)
                     {
-                        await AddNewUserMessage(item);
-                        return;
-                    }
-                    else
-                    {
-                        await CreateModMail();
-                        return;
+                        foundTicket = item;
+                        break;
                     }
                 }
 
+                if (foundTicket != null)
+                {
+                    await AddNewUserMessage(foundTicket);
+                }
+                else
+                {
+                    await CreateModMail();
+                }
+
+                return;
             }
             else if (message.Channel is SocketThreadChannel)
             {
@@ -134,7 +133,7 @@ namespace InetBot.Modules
                         if (message.Content.StartsWith("="))
                         {
                             string msg;
-                            msg = message.Content.Remove(0,1);
+                            msg = message.Content.Remove(0, 1);
 
                             string command = msg.Split(" ")[0];
 
@@ -144,15 +143,15 @@ namespace InetBot.Modules
                                     await CloseModMail(item, msg);
                                     break;
                                 case "reopen":
-                                     await ReopenModMail(item);
-                                     break;
+                                    await ReopenModMail(item);
+                                    break;
                                 default:
                                     await AddNewModMessage(item);
                                     break;
                             }
                         }
                         else
-                        { 
+                        {
                             return;
                         }
                     }
@@ -269,13 +268,13 @@ namespace InetBot.Modules
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
                 .WithTitle($"New Modmail!")
                 .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`!")
-                .AddField($":nerd: Author", $":calendar: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:calendar: <t:{sourceGuild.GetUser(sourceMessage.Author.Id).JoinedAt.Value.ToUnixTimeSeconds()}:f>\n:crossed_swords: {roleList}")
+                .AddField($":nerd: Author", $":cake: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:trumpet: <t:{sourceGuild.GetUser(sourceMessage.Author.Id).JoinedAt.Value.ToUnixTimeSeconds()}:f>\n:crossed_swords: {roleList}")
                 .WithColor(Color.Green)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
             ComponentBuilder buttonBuilder = new ComponentBuilder()
-                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");        
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");
 
             //await ticketChannel.SendMessageAsync(modmailRole.Mention);
             await ticketChannel.SendMessageAsync(embed: openEmbedBuilder.Build());
@@ -318,7 +317,7 @@ namespace InetBot.Modules
             }
 
 
-            string reason = msg.Remove(0,6);
+            string reason = msg.Remove(0, 6);
 
             ticket.isOpen = false;
             ticket.closingReason = reason;
@@ -342,8 +341,6 @@ namespace InetBot.Modules
                 .WithTitle($"__Ticket Closed!__")
                 .WithDescription($"Your ModMail ticket has been closed with the reason `{reason}`");
 
-            await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
-
             //send a confirmation message to the modmail thread
             EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
@@ -351,14 +348,28 @@ namespace InetBot.Modules
                 .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
                 .WithColor(Color.Green);
 
-            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
-
             //send a confirmation message to the modmail channel
             EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
                 .WithTitle($"__Ticket Closed!__")
                 .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
                 .WithColor(Color.Red);
+
+            try
+            {
+                await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+            }
+            catch (HttpException e)
+            {
+                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                {
+                    confirmEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                    notifEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                }
+            }
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
 
             ComponentBuilder buttonBuilder = new ComponentBuilder()
                 .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");
@@ -410,8 +421,10 @@ namespace InetBot.Modules
             //send the message to the user
             EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
-                .WithTitle($"__Message recieved__")
+                .WithTitle($"__Message received__")
                 .WithDescription($"{message}");
+
+            if (sourceMessage.Attachments.Count > 0) msgEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
 
             await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
 
@@ -421,6 +434,9 @@ namespace InetBot.Modules
                 .WithTitle($"__Message sent__")
                 .WithDescription($"{message}")
                 .WithColor(Color.Green);
+
+            if (sourceMessage.Attachments.Count > 0) confirmEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
+
 
             await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
 
@@ -446,11 +462,12 @@ namespace InetBot.Modules
             //send this message to the modmail channel
             EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
-                .WithTitle($"__Message recieved__")
+                .WithTitle($"__Message received__")
                 .WithDescription($"{sourceMessage.Content}");
 
-            await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
+            if (sourceMessage.Attachments.Count > 0) msgEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
 
+            await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
 
             //send a confirmation to the user
             EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
@@ -458,7 +475,7 @@ namespace InetBot.Modules
                 .WithTitle($"__Message sent__")
                 .WithDescription($"{sourceMessage.Content}")
                 .WithColor(Color.Green);
-                
+
             await sourceMessage.Author.SendMessageAsync(embed: confirmEmbedBuilder.Build());
 
             Emoji emoji = new Emoji("✅");
@@ -533,7 +550,7 @@ namespace InetBot.Modules
                 .WithColor(Color.Green)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
-            
+
             string roleList = "";
             long joinedat = 0;
             if (sourceGuild.GetUser(sourceMessage.Author.Id) != null)
@@ -551,7 +568,7 @@ namespace InetBot.Modules
                 .WithTitle($"New Modmail!")
                 .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`! This ticket has been created in response to a punishment:")
                 .AddField($"{emote} {typeText}", $":hash: **#{ticket.ticketID}**\n:clock8: <t:{punishment.timestamp}:f>\n:dart: <@{punishment.targetID}>\n:cop: <@{punishment.modID}>\n** Reason**:\n`{punishment.reason}`", true)
-                .AddField($":nerd: Author", $":calendar: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:calendar: <t:{joinedat}:f>\n:crossed_swords: {roleList}", true)
+                .AddField($":nerd: Author", $":cake: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:trumpet: <t:{joinedat}:f>\n:crossed_swords: {roleList}", true)
                 .WithColor(Color.Green)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
@@ -577,7 +594,7 @@ namespace InetBot.Modules
             {
                 File.WriteAllText(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName) + "\\modmailtickets.json", JsonConvert.SerializeObject((object)this.ticketFileRoot, Formatting.Indented));
             }
-            else if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 File.WriteAllText("/home/vendell/inet/modmailtickets.json", JsonConvert.SerializeObject((object)this.ticketFileRoot, Formatting.Indented));
             }

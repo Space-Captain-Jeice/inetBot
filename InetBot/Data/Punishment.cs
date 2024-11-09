@@ -26,7 +26,7 @@ namespace InetBot.Data
 
         public long timestamp { get; set; }
 
-        public ulong notifMsgID { get; set; }
+        public ulong? notifMsgID { get; set; }
 
         public bool active { get; set; }
 

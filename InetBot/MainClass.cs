@@ -14,6 +14,8 @@ using InetBot.Modules;
 using InetBot.Data;
 using System.Security;
 using System.Timers;
+using Discord.Audio;
+using System.Diagnostics;
 
 namespace InetBot
 {
@@ -25,12 +27,15 @@ namespace InetBot
         private SocketGuild _guild;
 
         //3ds
-        private ulong _guildId = 248504507430993921;
+        //private ulong _guildId = 248504507430993921;
         //tsd
-        //private ulong _guildId = 421017607710441492;
+        private ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
+
+        IAudioClient audioClient;
+
 
         public async Task Run()
         {
@@ -80,7 +85,7 @@ namespace InetBot
                     _activityCount++;
                     break;
                 case 2:
-                    await _client.SetGameAsync("Waiting for D3R-B0T", null, ActivityType.CustomStatus);
+                    await _client.SetGameAsync("Watching D3R-B0T", null, ActivityType.CustomStatus);
                     _activityCount = 0;
                     break;
 
@@ -89,23 +94,25 @@ namespace InetBot
 
         private async Task Client_Ready()
         {
+            _guild = _client.GetGuild(_guildId);
+            //await _guild.GetTextChannel(248506824129642503).SendMessageAsync("if you wanna fight, we gon fight");
+
             activityTimer.Interval = 30000;
             activityTimer.Elapsed += SetActivity;
             activityTimer.AutoReset = true;
             activityTimer.Enabled = true;
 
-            _guild = _client.GetGuild(_guildId);
-
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Client Ready! Version 0.001");
+            Console.WriteLine("Client Ready!");
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("Guild: ");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.Write(_guild.Name + "\n");
             Console.ResetColor();
 
-            var asd = _guild.GetTextChannel(259878856507392001).SendMessageAsync("vendell when are you making me better");
+            //Thread songThread = new Thread(new ThreadStart(startStream));
+            //songThread.Start();
 
             //var emote = Emote.Parse("<:o3ds:1261080733913710633>");
             //await _guild.GetTextChannel(1244346826174369862).GetMessageAsync(1260477725118824478).Result.AddReactionAsync(emote);
@@ -276,6 +283,35 @@ namespace InetBot
                 Console.WriteLine(json);
             }
         }
+
+        private async void startStream()
+        {
+            audioClient = await _client.GetGuild(248504507430993921).GetVoiceChannel(248508901216092160).ConnectAsync();
+            await SendAsync(audioClient, "mariah.wav");
+        }
+
+        private async Task SendAsync(IAudioClient client, string path)
+        {
+            using (var ffmpeg = CreateStream(path))
+            using (var output = ffmpeg.StandardOutput.BaseStream)
+            using (var discord = client.CreatePCMStream(AudioApplication.Mixed))
+            {
+                try { await output.CopyToAsync(discord); }
+                finally { await discord.FlushAsync(); }
+            }
+        }
+
+        private Process? CreateStream(string path)
+        {
+            return Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -stream_loop -1 -i \"{path}\" -ac 2 -f s16le -ar 48000 pipe:1",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+            });
+        }
+
         private async Task ReactionHandler(Cacheable<IUserMessage, ulong> cacheable1, Cacheable<IMessageChannel, ulong> cacheable2, SocketReaction reaction)
         {
             Reactions reactions = new Reactions();

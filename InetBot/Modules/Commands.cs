@@ -11,10 +11,7 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace InetBot.Modules
 {
@@ -29,8 +26,6 @@ namespace InetBot.Modules
         SocketUser _user;
         SocketUserMessage _userMessage;
 
-
-
         string by = "";
         string valueID = "";
 
@@ -38,9 +33,9 @@ namespace InetBot.Modules
         SocketTextChannel _modChannel;
         
         //3ds:
-        private ulong modChannelID = 259878856507392001;
+        //private ulong modChannelID = 259878856507392001;
         //tsd:
-        //private ulong modChannelID = 440118112977944578;
+        private ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
@@ -552,12 +547,25 @@ namespace InetBot.Modules
                         guildUser = message.Author as SocketGuildUser;
                         await HandleHelpCommand(guildUser);
                         break;
+                    case "say":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
+
+                        await HandleSayCommand();
+                        break;
                     case "ping":
                         await HandlePingCommand();
                         break;
                     case "format":
                     case "formatting":
                         await HandleFormatCommand();
+                        break;
+                    case "sd":
+                    case "sdcard":
+                        await HandleSDCommand();
                         break;
                     case "piracy":
                         await HandlePiracyCommand();
@@ -574,7 +582,10 @@ namespace InetBot.Modules
                         await HandleCitraCommand();
                         break;
                     case "guide":
-                        await HandleGuideCommand();
+                        string section = "";
+                        if (message.Content.Length > 7) section = message.Content.Remove(0, 7);
+
+                        await HandleGuideCommand(section);
                         break;
                     case "3ds":
                     case "n3ds":
@@ -600,6 +611,7 @@ namespace InetBot.Modules
             }
         }
 
+
         private async Task RespondToSlashCommand(EmbedBuilder embedBuilder)
         {
             if (!modCommands.Any(_command.CommandName.Contains))
@@ -623,6 +635,19 @@ namespace InetBot.Modules
             {
                 await _userMessage.DeleteAsync();
                 await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
+            }
+        }
+
+        private async Task RespondToInfoCommand(EmbedBuilder embedBuilder)
+        {
+            if (_userMessage.Reference != null)
+            {
+                await _userMessage.DeleteAsync();
+                await _userMessage.ReferencedMessage.ReplyAsync(embed: embedBuilder.Build());
+            }
+            else
+            {
+                await _userMessage.ReplyAsync(embed: embedBuilder.Build());
             }
         }
 
@@ -735,12 +760,18 @@ namespace InetBot.Modules
             {
                 punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
             }
-            catch (HttpException e)
+            catch (AggregateException e)
             {
-                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                e.Handle((x) =>
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the appeal form.");
-                }
+                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification and won't be able to appeal.");
+                        return true;
+                    }
+
+                    return false;
+                });
             }
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -814,12 +845,18 @@ namespace InetBot.Modules
                             {
                                 await user.SendMessageAsync(embed: notifBuilder.Build());
                             }
-                            catch (HttpException e)
+                            catch (AggregateException e)
                             {
-                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                e.Handle((x) =>
                                 {
-                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                }
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    {
+                                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                        return true;
+                                    }
+
+                                    return false;
+                                });
                             }
 
 
@@ -890,12 +927,18 @@ namespace InetBot.Modules
             {
                 punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
             }
-            catch (HttpException e)
+            catch (AggregateException e)
             {
-                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                e.Handle((x) =>
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
-                }
+                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification and won't be able to open a modmail.");
+                        return true;
+                    }
+
+                    return false;
+                });
             }
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -948,12 +991,18 @@ namespace InetBot.Modules
                             {
                                 await user.SendMessageAsync(embed: notifBuilder.Build());
                             }
-                            catch (HttpException e)
+                            catch (AggregateException e)
                             {
-                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                e.Handle((x) =>
                                 {
-                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                }
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    {
+                                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                        return true;
+                                    }
+
+                                    return false;
+                                });
                             }
 
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -993,12 +1042,18 @@ namespace InetBot.Modules
                                     {
                                         await guildUser.SendMessageAsync(embed: notifBuilder.Build());
                                     }
-                                    catch (HttpException e)
+                                    catch (AggregateException e)
                                     {
-                                        if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                        e.Handle((x) =>
                                         {
-                                            responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                        }
+                                            if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                            {
+                                                responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                                return true;
+                                            }
+
+                                            return false;
+                                        });
                                     }
 
                                     if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1082,7 +1137,7 @@ namespace InetBot.Modules
                 minutes = splitM[0];
             }
 
-            await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes), 0));
+            await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes),0));
 
             //message duration builder
             string messageDuration = "";
@@ -1114,12 +1169,18 @@ namespace InetBot.Modules
             {
                 punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
             }
-            catch (HttpException e)
+            catch (AggregateException e)
             {
-                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                e.Handle((x) =>
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
-                }
+                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification and won't be able to open a modmail.");
+                        return true;
+                    }
+
+                    return false;
+                });
             }
 
             punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
@@ -1187,12 +1248,18 @@ namespace InetBot.Modules
                             {
                                 await guildUser.SendMessageAsync(embed: notifBuilder.Build());
                             }
-                            catch (HttpException e)
+                            catch (AggregateException e)
                             {
-                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                e.Handle((x) =>
                                 {
-                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                }
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    {
+                                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                        return true;
+                                    }
+
+                                    return false;
+                                });
                             }
 
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1248,13 +1315,20 @@ namespace InetBot.Modules
             {
                 punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
             }
-            catch (HttpException e)
+            catch (AggregateException e)
             {
-                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                e.Handle((x) =>
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recive the notification and won't be able to open a modmail.");
-                }
+                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification and won't be able to open a modmail.");
+                        return true;
+                    }
+
+                    return false;
+                });
             }
+
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
@@ -1303,12 +1377,18 @@ namespace InetBot.Modules
                             {
                                 await user.SendMessageAsync(embed: notifBuilder.Build());
                             }
-                            catch (HttpException e)
+                            catch (AggregateException e)
                             {
-                                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                e.Handle((x) =>
                                 {
-                                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                }
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    {
+                                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                        return true;
+                                    }
+
+                                    return false;
+                                });
                             }
 
                             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1348,12 +1428,18 @@ namespace InetBot.Modules
                                     {
                                         await guildUser.SendMessageAsync(embed: notifBuilder.Build());
                                     }
-                                    catch (HttpException e)
+                                    catch (AggregateException e)
                                     {
-                                        if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                        e.Handle((x) =>
                                         {
-                                            responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the notification.");
-                                        }
+                                            if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                            {
+                                                responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                                return true;
+                                            }
+
+                                            return false;
+                                        });
                                     }
 
                                     if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1411,7 +1497,7 @@ namespace InetBot.Modules
                             var idEmbedBuilder = new EmbedBuilder()
                                 .WithAuthor($"Punishment #{item.punishmentID}", guild.IconUrl)
                                 .WithTitle($"{emote} {typeText} ")
-                                .WithDescription($":clock8: <t:{item.timestamp}:f>\n:dart: <@{item.targetID}>\n**Reason**:\n`{item.reason}`")
+                                .WithDescription($":clock8: <t:{item.timestamp}:f>\n:dart: <@{item.targetID}>\n:cop: <@{item.modID}>\n**Reason**:\n`{item.reason}`")
                                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                                 .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                                 .WithColor(Color.LightOrange);
@@ -1423,15 +1509,18 @@ namespace InetBot.Modules
                     break;
                 case "moderator":
                     var valueMod = guildUser;
+                    int modPunishmentCount = 0;
 
+                    //start building the framework of the embed
                     var modEmbedBuilder = new EmbedBuilder()
-                        .WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl())
                         .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                         .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                         .WithColor(Color.LightOrange);
 
                     foreach (var item in reversedPunishments)
                     {
+                        if (item.modID == valueMod.Id) modPunishmentCount++;
+
                         if (item.modID == valueMod.Id && modEmbedBuilder.Fields.Count < 6)
                         {
                             string typeText = getTypeTexts(item.type)[0];
@@ -1441,6 +1530,8 @@ namespace InetBot.Modules
                         }
                     }
 
+                    modEmbedBuilder.WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History ~ Total: {modPunishmentCount}", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl());
+
                     if (isSlashCommand) await RespondToSlashCommand(modEmbedBuilder);
                     else await RespondToTextCommand(modEmbedBuilder);
                     break;
@@ -1449,7 +1540,6 @@ namespace InetBot.Modules
 
                     //start building the framework of the embed
                     var targetEmbedBuilder = new EmbedBuilder()
-                        .WithAuthor($"{valueTarget.Username} [{valueTarget.Id}] ~ Punishment History", valueTarget.GetAvatarUrl() ?? valueTarget.GetDefaultAvatarUrl())
                         .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                         .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                         .WithColor(Color.LightOrange);
@@ -1463,6 +1553,8 @@ namespace InetBot.Modules
                             foundPunishments.Add(item);
                         }
                     }
+
+                    targetEmbedBuilder.WithAuthor($"{valueTarget.Username} [{valueTarget.Id}] ~ Punishment History ~ Total: {foundPunishments.Count}", valueTarget.GetAvatarUrl() ?? valueTarget.GetDefaultAvatarUrl());
 
                     //if theres <= 6 found punishments we can put them on one page...
                     if (foundPunishments.Count <= 6)
@@ -1654,7 +1746,7 @@ namespace InetBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle($"Application successfully denied!")
-                .WithDescription($"You have successfully denied the application of {user.Username} `[{user.Id}]`. They will recieve the unfortunate news in DMs.")
+                .WithDescription($"You have successfully denied the application of {user.Username} `[{user.Id}]`. They will receive the unfortunate news in DMs.")
                 .WithColor(Color.Green);
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1681,7 +1773,7 @@ namespace InetBot.Modules
             {
                 if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the news.");
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the news.");
                 }
             }
 
@@ -1695,7 +1787,7 @@ namespace InetBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle($"Application successfully accetped!")
-                .WithDescription($"You have successfully accepted the application of {user.Username} `[{user.Id}]`. They will recieve the great news in DMs.")
+                .WithDescription($"You have successfully accepted the application of {user.Username} `[{user.Id}]`. They will receive the great news in DMs.")
                 .WithColor(Color.Green);
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
@@ -1723,12 +1815,23 @@ namespace InetBot.Modules
             {
                 if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
                 {
-                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not recieve the news. But they will still be assigned the roles.");
+                    responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the news. But they will still be assigned the roles.");
                 }
             }
 
             await user.AddRoleAsync(248505366239772682);
             await user.AddRoleAsync(1267031294030778368);
+        }
+
+        private async Task HandleSayCommand()
+        {
+            if(_user == null) return;
+            if(_user.IsBot) return;
+
+            var msg = _message;
+            await _message.DeleteAsync();
+
+            await msg.Channel.SendMessageAsync(msg.Content.Remove(0,5));
         }
 
         private async Task HandlePingCommand()
@@ -1764,10 +1867,28 @@ namespace InetBot.Modules
                 $"For cards __above__ **32GB** on Windows you will need a special tool,\n which can be downloaded [here](http://ridgecrop.co.uk/index.htm?guiformat.htm).\n" +
                 $"**64GB** cards need an **Allocation unit size** of __32KB/32768 bytes__,\n **128GB** need __64KB/65536 bytes__.\n" +
                 $"Cards above **128GB** are __not__ recommended because of performance issues.");
+            await RespondToInfoCommand(replyBuilder);
+        }
+        private async Task HandleSDCommand()
+        {
+
+            //The 3DS can use SD cards up to 2TB in size.However, using cards larger than 128GB is not recommended, as it tends to cause issues.
+            //Any cards over 32GB will have to be formatted to FAT32 in a computer or hacked console before they can be used(use an allocation unit size
+            //of 32KB / 32768 for 64GB cards and 64KB / 65536 for 128GB cards or larger).
+            //Buy SD cards from reputable brands(SanDisk, Samsung, Kingston, etc.). Preferably, purchase cards from a brick and mortar store near you, but Amazon is okay
+            //if you must purchase online.NEVER buy cards from AliExpress, Wish, eBay or other similar sites.
+            //Speed is irrelevant for the 3DS - it is limited to Class 4(4MB / s) speeds.The only reason to buy a faster SD card is for faster data transfer to your computer.
+
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"About SD-Cards")
+                .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
+                $"The 3DS family *can* take cards up to 2TB. However this is not recommended as you will run into issues with cards larger than 128GB.\n" +
+                $"Cards **above 32GB** will have to be specially formatted. Consult `?formatting` for more information.\n" +
+                $"Buy SD cards from reputable brands(SanDisk, Samsung, Kingston, etc...). Never buy used cards or cards from questionable sources like AliExpress or Wish.\n" +
+                $"Card speed is irrelevant for the 3DS as it is limited to 4MB/s (Class 4). Faster speeds will only benefit you when transferring files from your PC to the card.");
 
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            await RespondToInfoCommand(replyBuilder);
         }
 
         private async Task HandlePiracyCommand()
@@ -1780,8 +1901,8 @@ namespace InetBot.Modules
                 "homebrew developers harder and harder.\n\n" +
                 "Any discussion of piracy or mentioning/sharing links to sites/applications enabling it will be met with a warning, pushback will lead to harsher punishments.");
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            await RespondToInfoCommand(replyBuilder);
+
         }
 
         private async Task HandleScreenCommand()
@@ -1794,8 +1915,8 @@ namespace InetBot.Modules
                 "Think about it this way: if you need to ask someone else what sort of panel your console has, does it really matter? You couldn't immediately tell and your gaming expirence has been just as good not knowing.\n\n" +
                 "If you **really** need to know what panels your console has, you can check on [3DSident](https://github.com/joel16/3DSident/releases)");
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            await RespondToInfoCommand(replyBuilder);
+
         }
 
         private async Task HandleCitraCommand()
@@ -1805,21 +1926,87 @@ namespace InetBot.Modules
                 .WithDescription("Since the lawsuit against Citra developers, Nintendo has been attacking communities providing support for Citra and other 3DS emulators.\n\n" +
                 "We will **not help you with emulating the 3DS** on other devices, we only support hacking actual 3DS systems.\n");
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            await RespondToInfoCommand(replyBuilder);
+
         }
 
-        private async Task HandleGuideCommand()
+        private async Task HandleGuideCommand(string section)
         {
-            var replyBuilder = new EmbedBuilder()
-                .WithTitle("About guides")
-                .WithDescription("Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
-                $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
-                $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still deceide to follow one, you are **on your own** as " +
-                $"we will __not__ be able to offer help in case something goes wrong.");
+            string title = "Oops!";
+            string description = "Something went wrong!";
+            Color color = Color.DarkerGrey;
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            if (string.IsNullOrEmpty(section))
+            {
+                title = "About guides";
+                description = "Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
+                $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
+                $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still decide to follow one, you are **on your own** as " +
+                $"we will __not__ be able to offer help in case something goes wrong.";
+                color = Color.Purple;
+            }
+            else
+            {
+                switch (section)
+                {
+                    case "transfer":
+                        title = "Doing a system transfer";
+                        description = "1) If the new console isn't hacked already, install CFW on the new console using [**the guide**](https://3ds.hacks.guide)\n" +
+                            "2) Do a system transfer normally. Choose **'Don't use the guide'** then **'PC-based transfer'** if asked.\n" +
+                            "3) On the new console, download [faketik](https://github.com/ihaveamac/faketik/releases/latest) and place `faketik.3dsx` in the `3ds` folder on your SD root.\n" +
+                            "4) Launch the **Homebrew Launcher** on the new console. [Follow this](https://wiki.hacks.guide/wiki/3DS:Troubleshooting/manually_entering_homebrew_launcher) if you don't know how.\n" +
+                            "5) Once you are in the Homebrew Launcher, run **faketik**.\n" +
+                            "6) Your Homebrew apps should appear on the homescreen!\n\n" +
+                            "*Taken from [the guides FAQ](https://3ds.hacks.guide/faq)*";
+                        color = Color.Teal;
+                        break;
+                    case "cfwupdate":
+                        title = "Updating Luma";
+                        description = "To update your Luma installation,\n1) [Download Luma3DS](https://github.com/LumaTeam/Luma3DS/releases/latest)\n" +
+                            "2) Insert your SD card into your computer.\n" +
+                            "3) Copy `boot.3dsx` and `boot.firm` from the `.zip` to the root of your SD card.\n" +
+                            "4) Reinsert the SD card into your console and power it up!\n\n" +
+                            "*Taken from [the guide](https://3ds.hacks.guide/restoring-updating-cfw)*";
+                        color = Color.Magenta;
+                        break;
+                    case "systemupdate":
+                        title = "Updating your System";
+                        description = "**If you plan on hacking your system**\n" +
+                            "Currently **every system version** is **hackable**, though there might be **easier** methods **for older versions**.\n" +
+                            "Check [the guide](https://3ds.hacks.guide/get-started) for the **available methods** for your systems version.\n\n" +
+                            "**If your system is already hacked**\n" +
+                            "It's advised to **wait a bit** to see if [Luma3DS](https://github.com/LumaTeam/Luma3DS/releases/latest) needs to be updated **before** you update your system.\n" +
+                            "Though it is **unlikely** that a system update would break Luma.\n\n" +
+                            "*Referencing [the guides FAQ](https://3ds.hacks.guide/faq)*";
+                        color = Color.DarkTeal;
+                        break;
+                    case "regionchange":
+                        title = "Changing your consoles region";
+                        description = "If you have **Luma3DS** installed you can play out-of-region games (ex. **U**S games on **E**uropean consoles) without having to region change.\n" +
+                            "But especially for **J**apanese consoles, where you can't set the UI language to english, region changing is needed.\n" +
+                            "Region changing is an involved process- if you already have CFW, please follow [the guide](https://3ds.hacks.guide/region-changing)\n" +
+                            "Otherwise you need to [hack your console first](https://3ds.hacks.guide)";
+                        color = Color.LightOrange;
+                        break;
+                    default:
+                        title = "About guides";
+                        description = "Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
+                        $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
+                        $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still decide to follow one, you are **on your own** as " +
+                        $"we will __not__ be able to offer help in case something goes wrong.";
+                        color = Color.Purple;
+                        break;
+                }
+            }
+
+
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle(title)
+                .WithColor(color)
+                .WithDescription(description);
+
+            await RespondToInfoCommand(replyBuilder);
+
         }
 
         private async Task HandleDiffCommand()
@@ -1832,8 +2019,8 @@ namespace InetBot.Modules
                 "the new models use **microSD** cards.\n" +
                 "You can also customize your New 3DS **non-XL** console with **faceplates** in different designs.");
 
-            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            else await RespondToTextCommand(replyBuilder);
+            await RespondToInfoCommand(replyBuilder);
+
         }
 
         private async Task HandleCatCommand()

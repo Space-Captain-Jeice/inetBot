@@ -16,10 +16,10 @@ namespace InetBot.Data
     {
         public string _id;
 
-        
         public static Cat GetRandomCat()
         {
             HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
             using (HttpResponseMessage response = client.GetAsync("https://cataas.com/cat?json=true").Result)
             {
                 using (Stream stream = response.Content.ReadAsStream())
@@ -41,6 +41,7 @@ namespace InetBot.Data
         public static Dog GetRandomDog()
         {
             HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
             using (HttpResponseMessage response = client.GetAsync("https://dog.ceo/api/breeds/image/random").Result)
             {
                 using (Stream stream = response.Content.ReadAsStream())
@@ -61,6 +62,7 @@ namespace InetBot.Data
         public static string GetRandomOtter()
         {
             HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
             Regex regex = new Regex("<a href=\".*\">(?<name>.*)</a>");
             using (HttpResponseMessage response = client.GetAsync("https://vendell.online/img/otter/").Result)
             {
@@ -94,6 +96,7 @@ namespace InetBot.Data
         public static Bird GetRandomBird()
         {
             HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
             using (HttpResponseMessage response = client.GetAsync("https://some-random-api.com/animal/bird").Result)
             {
                 using (Stream stream = response.Content.ReadAsStream())
