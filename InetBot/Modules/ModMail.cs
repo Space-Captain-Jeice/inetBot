@@ -20,9 +20,9 @@ namespace InetBot.Modules
         SocketRole modmailRole;
 
         //3ds
-        //ulong modmailChannelId = 1141532366142189620;
+        ulong modmailChannelId = 1141532366142189620;
         //tsd
-        ulong modmailChannelId = 440118112977944578;
+        //ulong modmailChannelId = 440118112977944578;
 
         //ulong modmailRoleId = 455414864056156170;
 
@@ -366,6 +366,24 @@ namespace InetBot.Modules
                     confirmEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
                     notifEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
                 }
+            }
+            catch (NullReferenceException e)
+            {
+                if (user == null)
+                {
+                    confirmEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                    notifEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                }
+                else
+                {
+                    confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
+                    notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
+                }
+            }
+            catch (Exception e)
+            {
+                confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
+                notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
             }
 
             await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());

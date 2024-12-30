@@ -33,9 +33,9 @@ namespace InetBot.Modules
         SocketTextChannel _modChannel;
         
         //3ds:
-        //private ulong modChannelID = 259878856507392001;
+        private ulong modChannelID = 259878856507392001;
         //tsd:
-        private ulong modChannelID = 440118112977944578;
+        //private ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
@@ -686,7 +686,7 @@ namespace InetBot.Modules
                 if (isSlashCommand) await RespondToSlashCommand(modReplyBuilder);
                 else await RespondToTextCommand(modReplyBuilder);
             }
-
+            
             var userReplyBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("Inet-Kun User Help")
@@ -694,8 +694,10 @@ namespace InetBot.Modules
                 "Here is an overview of the commands with examples!\n\n" +
                 "`?otter/dog/cat/bird`\n" + 
                 "Gets a random image of your favourite critter.\n" +
-                "`?format/piracy/panel/citra/guide/n3ds`\n" +
+                "`?format/sd/piracy/panel/citra/n3ds`\n" +
                 "Provides information about various topics.\n" +
+                "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
+                "Gives you information about guides. Optionally points you to guide sections.\n" +
                 "`?ping`\n" +
                 "Get the bots ping to discord.");
 
@@ -1895,7 +1897,8 @@ namespace InetBot.Modules
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About Piracy")
-                .WithDescription("Piracy is **illegal** and against **Discord TOS**, so we do NOT allow any discussion of it.\n\n" +
+                .WithDescription("Piracy is **illegal** and against **Discord TOS**, so we do NOT allow any discussion of it.\n" +
+                "We also can not help with troubleshooting pirated games.\n\n" +
                 "Homebrew and 'hacking' does not automatically mean illegally downloading games or any other copyrighted content.\n" +
                 "Piracy paints the homebrew community in a bad light in legislators and publishers eyes, and gives console makers more incentive to lock down their systems, making the jobs of volunteer " +
                 "homebrew developers harder and harder.\n\n" +

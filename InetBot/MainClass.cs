@@ -27,9 +27,9 @@ namespace InetBot
         private SocketGuild _guild;
 
         //3ds
-        //private ulong _guildId = 248504507430993921;
+        private ulong _guildId = 248504507430993921;
         //tsd
-        private ulong _guildId = 421017607710441492;
+        //private ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
