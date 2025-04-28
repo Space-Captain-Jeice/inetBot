@@ -14,7 +14,7 @@ namespace InetBot.Data
 {
     public class Cat
     {
-        public string _id;
+        public string url;
 
         public static Cat GetRandomCat()
         {

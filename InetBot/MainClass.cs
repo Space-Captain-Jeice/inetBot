@@ -16,6 +16,7 @@ using System.Security;
 using System.Timers;
 using Discord.Audio;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace InetBot
 {
@@ -36,6 +37,7 @@ namespace InetBot
 
         IAudioClient audioClient;
 
+        ulong dummie = 0;
 
         public async Task Run()
         {
@@ -52,6 +54,7 @@ namespace InetBot
 
             _client.MessageReceived += MessageRecievedHandler;
             _client.AuditLogCreated += AuditLogCreated;
+            _client.AutoModActionExecuted += AutoModActionExecuted;
 
             _client.SlashCommandExecuted += SlashCommandHandler;
             _client.ButtonExecuted += ButtonHandler;
@@ -64,6 +67,39 @@ namespace InetBot
 
             // Block this task until the program is closed.
             await Task.Delay(-1);
+        }
+
+        private async Task AutoModActionExecuted(SocketGuild guild, AutoModRuleAction action, AutoModActionExecutedData data)
+        {
+            Commands commands = new Commands();
+
+            if (data.AlertMessageId != 0) return;
+
+            if (data.Rule.Id == 976298046214266890)
+            //if (data.Rule.Id == 1357104233262088202)
+            {
+                if (data.User.Value.Id == dummie)
+                {
+                    EmbedBuilder dummieBuilder = new EmbedBuilder()
+                        .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl).WithTitle("__AutoMod triggered!__")
+                        .WithDescription($"You are trying to send a message containing a piracy word, which breaks the rules of the server.\n\n" +
+                        $"☠ **While homebrew and flashcart discussion is allowed, talk about piracy or links that redirect to ROM/emulator download sites is strictly prohibited. It's illegal and can lead to all sorts of trouble, simple as that.**")
+                        .WithColor(Color.Red);
+
+                    EmbedBuilder dummieNotifBuilder = new EmbedBuilder()
+                        .WithAuthor($"{data.User.Value.Username} [{data.User.Value.Id}]", data.User.Value.GetAvatarUrl() ?? data.User.Value.GetDefaultAvatarUrl()).WithTitle("__AutoMod triggered!__")
+                        .WithDescription($"`{data.User.Value.Username}` has been notified of the piracy rule!")
+                        .WithColor(Color.Red);
+
+                    await data.User.Value.SendMessageAsync(embed: dummieBuilder.Build());
+                    await guild.GetTextChannel(commands.modChannelID).SendMessageAsync(embed:dummieNotifBuilder.Build());
+                    dummie = 0;
+                }
+                else
+                {
+                    dummie = data.User.Value.Id;
+                }
+            }
         }
 
         private async Task AuditLogCreated(SocketAuditLogEntry logEntry, SocketGuild guild)
@@ -85,6 +121,10 @@ namespace InetBot
                     _activityCount++;
                     break;
                 case 2:
+                    await _client.SetGameAsync("Fly high Gizmo <3", null, ActivityType.CustomStatus);
+                    _activityCount++;
+                    break;
+                case 3:
                     await _client.SetGameAsync("Watching D3R-B0T", null, ActivityType.CustomStatus);
                     _activityCount = 0;
                     break;
@@ -95,7 +135,7 @@ namespace InetBot
         private async Task Client_Ready()
         {
             _guild = _client.GetGuild(_guildId);
-            //await _guild.GetTextChannel(248506824129642503).SendMessageAsync("if you wanna fight, we gon fight");
+            //await _guild.GetTextChannel(259887245324976148).GetMessageAsync(1358429192265535740).Result.Author.SendMessageAsync("hi :)\ndid you mean to message the moderators?");
 
             activityTimer.Interval = 30000;
             activityTimer.Elapsed += SetActivity;

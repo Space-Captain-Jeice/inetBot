@@ -1,6 +1,9 @@
 ﻿using Discord;
 using Discord.Net;
 using Discord.WebSocket;
+using FuzzySharp;
+using FuzzySharp.Extractor;
+using FuzzySharp.SimilarityRatio;
 using InetBot.Data;
 using Newtonsoft.Json;
 using System;
@@ -30,12 +33,13 @@ namespace InetBot.Modules
         string valueID = "";
 
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
+        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formst", "formatting", "sd", "sdcard", "piracy", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb"];
         SocketTextChannel _modChannel;
         
         //3ds:
-        private ulong modChannelID = 259878856507392001;
+        public ulong modChannelID = 259878856507392001;
         //tsd:
-        //private ulong modChannelID = 440118112977944578;
+        //public ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
@@ -200,7 +204,7 @@ namespace InetBot.Modules
                 .WithColor(Color.Red);
 
             if (char.IsLetterOrDigit(cmd[0]))
-            { 
+            {
 
                 switch (cmd)
                 {
@@ -547,6 +551,12 @@ namespace InetBot.Modules
                         guildUser = message.Author as SocketGuildUser;
                         await HandleHelpCommand(guildUser);
                         break;
+                    case "rule":
+                    case "rules":
+                        int rule = int.Parse(message.Content.Split(" ")[1]);
+
+                        await HandleRulesCommand(rule);
+                        break;
                     case "say":
                         if (!guildUser1.GuildPermissions.KickMembers)
                         {
@@ -560,6 +570,7 @@ namespace InetBot.Modules
                         await HandlePingCommand();
                         break;
                     case "format":
+                    case "formst":
                     case "formatting":
                         await HandleFormatCommand();
                         break;
@@ -572,6 +583,7 @@ namespace InetBot.Modules
                         break;
                     case "tnips":
                     case "panel":
+                    case "panels":
                     case "ips":
                     case "tn":
                         await HandleScreenCommand();
@@ -604,8 +616,11 @@ namespace InetBot.Modules
                     case "birb":
                         await HandleBirdCommand();
                         break;
+                    case "idiot":
+                        await HandleIdiotCommand();
+                        break;
                     default:
-                        await HandleUnknownCommand();
+                        await HandleUnknownCommand(cmd);
                         break;
                 }
             }
@@ -698,11 +713,114 @@ namespace InetBot.Modules
                 "Provides information about various topics.\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
                 "Gives you information about guides. Optionally points you to guide sections.\n" +
+                "`?rule <1-10>`\n" +
+                "Shows you the specified rule.\n" +
                 "`?ping`\n" +
                 "Get the bots ping to discord.");
 
             if (isSlashCommand) await RespondToSlashCommand(userReplyBuilder);
             else await RespondToTextCommand(userReplyBuilder);
+        }
+
+        private async Task HandleRulesCommand(int rule)
+        {
+            string title = "Oops!";
+            string description = "Something went wrong!";
+            Color color = Color.DarkerGrey;
+
+            switch (rule)
+            {
+                //9
+                case 1:
+                    title = "Rule 1: Be nice";
+                    description = "Treat all users in the server with respect and kindness. Everyone is entitled to disagree and have their own opinions, " +
+                        "but do so in a civil and clean way. Remember, there is an actual person on the other side of the screen.";
+                    color = Color.Green;
+                    break;
+                case 2:
+                    title = "Rule 2: No spamming";
+                    description = "No spamming or trolling. This includes, but is not limited to: excessive bot commands, pings, images, and links to other websites. " +
+                        "It's completely unnecessary and just clogs and disrupts the chat.";
+                    color = Color.Orange;
+                    break;
+                case 3:
+                    title = "Rule 3: No Trading";
+                    description = "Trading, begging, or selling of any kind is not allowed. We have no way of keeping track of any kinds of transactions of this nature, " +
+                        "nor are we responsible for any missing or lost packages. Take things like this to the appropriate sub on reddit.";
+                    color = Color.LightOrange;
+                    break;
+                case 4:
+                    title = "Rule 4: SFW only";
+                    description = "NSFW content is not allowed. This should go without saying. We are a PG-13, user-friendly server and subreddit consisting of people of all ages. " +
+                        "No one wants to see something inappropriate. Take all of that content far away from here.";
+                    color = Color.Red;
+                    break;
+                case 5:
+                    title = "Rule 5: No self-promotion";
+                    description = "Self-promotion/advertising, links to other Discord servers, or affiliate links are not permitted. Content in chat should keep users engaged and relevant " +
+                        "to the topic at hand, not stray away from it.";
+                    color = Color.Magenta;
+                    break;
+                case 6:
+                    title = "Rule 6: No spoilers";
+                    description = "No spoilers.Just don't do it. Some people don't like being spoiled or just aren't up to date with the latest news. " +
+                        "If there is something you are itching to get out, at least start your message with a spoiler warning or take it to PM.";
+                    color = Color.Teal;
+                    break;
+                case 7:
+                    title = "Rule 7: No piracy";
+                    description = "While homebrew and flashcart discussion is allowed, talk about piracy or links that redirect to ROM/emulator download sites is strictly prohibited. " +
+                        "It's illegal and can lead to all sorts of trouble, simple as that.";
+                    color = Color.DarkGrey;
+                    break;
+                case 8:
+                    title = "Rule 8: Stay on topic";
+                    description = "Use the appropriate channel. The server is made for ease of use and for everyone to enjoy and their experience on Discord. " +
+                        "Use it correctly and to your advantage. It helps keeps the server clean and organized.";
+                    color = Color.Purple;
+                    break;
+                case 9:
+                    title = "Rule 9: Obey the mods";
+                    description = "Obey mods at all times. If a mod tells you something, it's in your best interest to listen to them. " +
+                        "We are always here to help keep the server running and in good shape in conjunction with the subreddit.";
+                    color = Color.DarkMagenta;
+                    break;
+                case 10:
+                    title = "Rule 10: Have fun!";
+                    description = "Do not break this one.";
+                    color = Color.Blue;
+                    break;
+                case 11:
+                    title = "Rule 11: There is no rule 11";
+                    description = "Go away.";
+                    color = Color.Parse("#ff00ff");
+                    break;
+                case 34:
+                    title = "Rule 34: If it exists, it's not on this server";
+                    description = "Aren't you a funny one";
+                    color = Color.Parse("#aae5a4");
+                    break;
+                case 42:
+                    title = "Rule 42: The answer";
+                    description = "To life, the universe, and everything.";
+                    color = Color.Parse("#000000");
+                    break;
+                case 621:
+                    title = "Rule 621: Why did you type this";
+                    description = "Rules of furry convention hygene:\n6 hours of sleep per night.\n2 meals per day.\n1 shower per day.\n";
+                    color = Color.Parse("#012e56");
+                    break;
+                default:
+                    title = "";
+                    break;
+            }
+
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle(title)
+                .WithColor(color)
+                .WithDescription(description);
+
+            await RespondToInfoCommand(replyBuilder);
         }
 
         private async Task HandleBanCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
@@ -2028,17 +2146,9 @@ namespace InetBot.Modules
 
         private async Task HandleCatCommand()
         {
-            //var replyBuilder = new EmbedBuilder()
-            //    .WithTitle($"Not available!")
-            //    .WithImageUrl($"cataas.com is down currently. Please try ?dog or ?otter instead!")
-            //    .WithFooter("Powered by cataas.com");
-
-            //if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
-            //else await RespondToTextCommand(replyBuilder);
-
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"Heres your random cat {_message.Author.Username}!")
-                .WithImageUrl($"https://cataas.com/cat/{Cat.GetRandomCat()._id}")
+                .WithImageUrl($"{Cat.GetRandomCat().url}")
                 .WithFooter("Powered by cataas.com");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
@@ -2077,6 +2187,17 @@ namespace InetBot.Modules
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
             else await RespondToTextCommand(replyBuilder);
 
+        }
+
+        private async Task HandleIdiotCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"{_message.Author.Username} is an idiot!")
+                .WithImageUrl($"https://cdn.discordapp.com/attachments/1227707463340523590/1363979968387874867/image.png")
+                .WithFooter("hahahahahahahahahahaha");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
         }
 
         public async Task HandleAuditLog(SocketAuditLogEntry logEntry, SocketGuild guild, DiscordSocketClient client)
@@ -2236,7 +2357,7 @@ namespace InetBot.Modules
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                File.WriteAllText(string.Concat(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "\\punishments.json"), JsonConvert.SerializeObject(punishments, Formatting.Indented));
+                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\punishments.json"), JsonConvert.SerializeObject(punishments, Formatting.Indented));
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -2244,12 +2365,22 @@ namespace InetBot.Modules
             }
         }
 
-        public async Task HandleUnknownCommand()
+        public async Task HandleUnknownCommand(string command)
         {
+
+            var result = FuzzySharp.Process.ExtractOne(command, commands);
+
+            string suggestion = "";
+
+            if (result.Score > 75)
+            {
+                suggestion = $"\n:white_check_mark: Did you mean `{result.Value}`?";
+            }
+
             var errorBuilder = new EmbedBuilder()
                 .WithAuthor($"{_message.Author.Username} [{_message.Author.Id}]", _message.Author.GetAvatarUrl() ?? _message.Author.GetDefaultAvatarUrl())
-                .WithTitle("__Oops...I'm Not Familiar With That Command!__")
-                .WithDescription($":prohibited: You've entered an unknown command! Try **?help**")
+                .WithTitle($"__Oops...I'm Not Familiar With That Command!__")
+                .WithDescription($":prohibited: You've entered an unknown command! Try **?help**{suggestion}")
                 .WithColor(Color.Red)
                 .WithCurrentTimestamp();
 
