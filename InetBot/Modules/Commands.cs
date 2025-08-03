@@ -20,13 +20,13 @@ namespace InetBot.Modules
 {
     public class Commands
     {
-        bool isSlashCommand;
+        public bool isSlashCommand;
         bool userHasPerms = false;
 
         SocketSlashCommand _command;
         SocketMessage _message;
 
-        SocketUser _user;
+        public SocketUser _user;
         SocketUserMessage _userMessage;
 
         string by = "";
@@ -34,7 +34,7 @@ namespace InetBot.Modules
 
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
         string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formst", "formatting", "sd", "sdcard", "piracy", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb"];
-        SocketTextChannel _modChannel;
+        public SocketTextChannel _modChannel;
         
         //3ds:
         public ulong modChannelID = 259878856507392001;
@@ -68,6 +68,7 @@ namespace InetBot.Modules
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.Write("'" + command.User.Username + "'\n");
             Console.ResetColor();
+
 
             foreach (var item in guildUser1.Roles)
             {
@@ -205,7 +206,6 @@ namespace InetBot.Modules
 
             if (char.IsLetterOrDigit(cmd[0]))
             {
-
                 switch (cmd)
                 {
                     case "ban":
@@ -603,6 +603,9 @@ namespace InetBot.Modules
                     case "n3ds":
                         await HandleDiffCommand();
                         break;
+                    case "n2dsxl":
+                        await HandleN2DSXLCommand();
+                        break;
                     case "cat":
                         await HandleCatCommand();
                         break;
@@ -629,6 +632,7 @@ namespace InetBot.Modules
 
         private async Task RespondToSlashCommand(EmbedBuilder embedBuilder)
         {
+
             if (!modCommands.Any(_command.CommandName.Contains))
             {
                 await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false);
@@ -642,19 +646,25 @@ namespace InetBot.Modules
 
         private async Task RespondToTextCommand(EmbedBuilder embedBuilder)
         {
-            if (!modCommands.Any(_message.Content.Contains))
+            if (_message != null)
             {
-                await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+                if (!modCommands.Any(_message.Content.Contains))
+                {
+                    await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+                }
+                else
+                {
+                    await _userMessage.DeleteAsync();
+                    await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
+                }
             }
-            else
-            {
-                await _userMessage.DeleteAsync();
-                await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
-            }
+            else { await _modChannel.SendMessageAsync(embed: embedBuilder.Build()); }
+
         }
 
         private async Task RespondToInfoCommand(EmbedBuilder embedBuilder)
         {
+
             if (_userMessage.Reference != null)
             {
                 await _userMessage.DeleteAsync();
@@ -804,6 +814,16 @@ namespace InetBot.Modules
                     title = "Rule 42: The answer";
                     description = "To life, the universe, and everything.";
                     color = Color.Parse("#000000");
+                    break;
+                case 69:
+                    title = "Rule 69: Nice.";
+                    description = "Nice.";
+                    color = Color.Parse("#922B3E");
+                    break;
+                case 420:
+                    title = "Rule 420: Nice.";
+                    description = "Nice.";
+                    color = Color.Parse("#A2231D");
                     break;
                 case 621:
                     title = "Rule 621: Why did you type this";
@@ -1394,7 +1414,7 @@ namespace InetBot.Modules
             }
         }
 
-        private async Task HandleWarnCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
+        public async Task HandleWarnCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
         {
             //Create Punishment in DB and save
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
@@ -1448,7 +1468,6 @@ namespace InetBot.Modules
                     return false;
                 });
             }
-
 
             if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
             else await RespondToTextCommand(responseBuilder);
@@ -1617,7 +1636,7 @@ namespace InetBot.Modules
                             var idEmbedBuilder = new EmbedBuilder()
                                 .WithAuthor($"Punishment #{item.punishmentID}", guild.IconUrl)
                                 .WithTitle($"{emote} {typeText} ")
-                                .WithDescription($":clock8: <t:{item.timestamp}:f>\n:dart: <@{item.targetID}>\n:cop: <@{item.modID}>\n**Reason**:\n`{item.reason}`")
+                                .WithDescription($":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:dart: <@{item.targetID}>\n:cop: <@{item.modID}>\n**Reason**:\n`{item.reason}`")
                                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                                 .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                                 .WithColor(Color.LightOrange);
@@ -1646,7 +1665,7 @@ namespace InetBot.Modules
                             string typeText = getTypeTexts(item.type)[0];
                             string emote = getTypeTexts(item.type)[1];
 
-                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:dart: <@{item.targetID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:dart: <@{item.targetID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
                         }
                     }
 
@@ -1686,7 +1705,7 @@ namespace InetBot.Modules
                             string emote = getTypeTexts(item.type)[1];
 
                             //add field for each
-                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
 
                         }
 
@@ -1708,7 +1727,7 @@ namespace InetBot.Modules
                             string emote = getTypeTexts(item.type)[1];
 
                             //add field for each punishment
-                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
 
                             //and remove the punishment from the list again
                             foundPunishments.Remove(item);
@@ -1991,14 +2010,6 @@ namespace InetBot.Modules
         }
         private async Task HandleSDCommand()
         {
-
-            //The 3DS can use SD cards up to 2TB in size.However, using cards larger than 128GB is not recommended, as it tends to cause issues.
-            //Any cards over 32GB will have to be formatted to FAT32 in a computer or hacked console before they can be used(use an allocation unit size
-            //of 32KB / 32768 for 64GB cards and 64KB / 65536 for 128GB cards or larger).
-            //Buy SD cards from reputable brands(SanDisk, Samsung, Kingston, etc.). Preferably, purchase cards from a brick and mortar store near you, but Amazon is okay
-            //if you must purchase online.NEVER buy cards from AliExpress, Wish, eBay or other similar sites.
-            //Speed is irrelevant for the 3DS - it is limited to Class 4(4MB / s) speeds.The only reason to buy a faster SD card is for faster data transfer to your computer.
-
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"About SD-Cards")
                 .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
@@ -2030,11 +2041,10 @@ namespace InetBot.Modules
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About TN vs IPS panels")
-                .WithDescription("In short, which type of screen your console has **does not matter** in 99% of situations.\n\n" +
-                "TN panels only drawback to IPS is reduced colour accuracy at extreme viewing angles. You basically need to be looking at your 3DS from the side to be able to tell.\n" +
-                "IPS panels also use slightly more power, reducing battery life.\n" +
-                "Think about it this way: if you need to ask someone else what sort of panel your console has, does it really matter? You couldn't immediately tell and your gaming expirence has been just as good not knowing.\n\n" +
-                "If you **really** need to know what panels your console has, you can check on [3DSident](https://github.com/joel16/3DSident/releases)");
+                .WithDescription("In short, the differences are not significant. While the IPS vs TN differences are significant on something like a PC monitor, the differences on a 3DS system are negligible when viewed directly.\n\n" +
+                "**IPS Screens**\n+ Larger viewing angle.\n+ More vivid colors.\n\\- People often complain of a scanline effect when comparing closely with a TN screen.\n\\- Suffers from 'crushed blacks', which means that detail in dark areas is often lost.\n\\- Uses slightly more power, decreasing battery life.\n\n" +
+                "**TN Screens**\n+ Less ghosting.\n+ Detail isn't lost in dark areas.\n\\- Reduced viewing angle/wash out at extreme angles.\n\\- Colors are slightly duller.\n\n" +
+                "To tell which panels your console has, look at your 3DS from the side or bottom. If the color fades/the screen goes white, it's TN. If it doesn't, it's IPS. If your 3ds has CFW, you can check in the Rosalina menu or with [3DSident](https://github.com/joel16/3DSident/releases) by selecting \"System Info\".");
 
             await RespondToInfoCommand(replyBuilder);
 
@@ -2085,7 +2095,7 @@ namespace InetBot.Modules
                         title = "Updating Luma";
                         description = "To update your Luma installation,\n1) [Download Luma3DS](https://github.com/LumaTeam/Luma3DS/releases/latest)\n" +
                             "2) Insert your SD card into your computer.\n" +
-                            "3) Copy `boot.3dsx` and `boot.firm` from the `.zip` to the root of your SD card.\n" +
+                            "3) Copy `boot.3dsx`, `boot.firm` and the `config` folder from the `.zip` to the root of your SD card.\n" +
                             "4) Reinsert the SD card into your console and power it up!\n\n" +
                             "*Taken from [the guide](https://3ds.hacks.guide/restoring-updating-cfw)*";
                         color = Color.Magenta;
@@ -2142,6 +2152,30 @@ namespace InetBot.Modules
 
             await RespondToInfoCommand(replyBuilder);
 
+        }
+
+        private async Task HandleN2DSXLCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About the New 2DS XL")
+                .WithDescription("We don't recommend buying the New 2DS XL for a multitude of reasons:\n" +
+                "- No 3D (obviously)\n" +
+                "- Low quality build despite being in the \"New\" line\n" +
+                "- High price despite being a budget console\n" +
+                "- Speakers placed where your hand goes\n" +
+                "- Backplate uses tri-point screws despite other models using #00 JIS\n" +
+                "- Tiny stylus\n" +
+                "- Hinge prone to snapping\n" +
+                "- High rate of FCRAM failure\n" +
+                "- Difficult to repair (e.g battery glued in place)\n" +
+                "- Lower battery capacity (1500mAh vs 1750mAh)\n" +
+                "- No charging cradle\n" +
+                "- LCD light bleeds through the shell on orange and white models\n" +
+                "- Higher rate of NAND failure\n" +
+                "- Matte finish is prone to scratching\n\n" +
+                "We are of course not saying to get rid of it if you already own one, but if you are in the market for a new 3DS it's best to avoid the n2DSXL for the reasons above.");
+
+            await RespondToInfoCommand(replyBuilder);
         }
 
         private async Task HandleCatCommand()

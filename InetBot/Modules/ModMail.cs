@@ -15,7 +15,7 @@ namespace InetBot.Modules
         DiscordSocketClient _client;
 
         ModMailTicketFileRoot ticketFileRoot;
-        List<ModMailTicket> reversedModMailTickets;
+        List<ModMailTicket> reversedModMailTickets = new List<ModMailTicket>();
 
         SocketRole modmailRole;
 
@@ -34,7 +34,7 @@ namespace InetBot.Modules
 
             if (message.Content == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
 
-            if (message.Content.ToLower().Contains("skibidi")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
+            if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
 
             //initialize a list of modmails and punishments for use across the class
             ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
@@ -140,7 +140,10 @@ namespace InetBot.Modules
                             switch (command)
                             {
                                 case "close":
-                                    await CloseModMail(item, msg);
+                                    await CloseModMail(item, msg, false);
+                                    break;
+                                case "qclose":
+                                    await CloseModMail(item, msg, true);
                                     break;
                                 case "reopen":
                                     await ReopenModMail(item);
@@ -301,7 +304,7 @@ namespace InetBot.Modules
             await SaveModmails();
         }
 
-        public async Task CloseModMail(ModMailTicket ticket, string msg)
+        public async Task CloseModMail(ModMailTicket ticket, string msg, bool quiet)
         {
             if (msg.Length <= 6)
             {
@@ -348,6 +351,7 @@ namespace InetBot.Modules
                 .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
                 .WithColor(Color.Green);
 
+
             //send a confirmation message to the modmail channel
             EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
@@ -355,35 +359,41 @@ namespace InetBot.Modules
                 .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
                 .WithColor(Color.Red);
 
-            try
+            if (quiet) confirmEmbedBuilder.WithDescription($"The ticket #{ticket.ticketID} has been quietly closed with reason `{reason}`.");
+            if (quiet) notifEmbedBuilder.WithDescription($"The ticket #{ticket.ticketID} has been quietly closed with reason `{reason}`.");
+
+            if (!quiet)
             {
-                await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
-            }
-            catch (HttpException e)
-            {
-                if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                try
                 {
-                    confirmEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
-                    notifEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                    await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
                 }
-            }
-            catch (NullReferenceException e)
-            {
-                if (user == null)
+                catch (HttpException e)
                 {
-                    confirmEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
-                    notifEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                    if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        confirmEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                        notifEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                    }
                 }
-                else
+                catch (NullReferenceException e)
+                {
+                    if (user == null)
+                    {
+                        confirmEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                        notifEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                    }
+                    else
+                    {
+                        confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
+                        notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
+                    }
+                }
+                catch (Exception e)
                 {
                     confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
                     notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
                 }
-            }
-            catch (Exception e)
-            {
-                confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
-                notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
             }
 
             await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());

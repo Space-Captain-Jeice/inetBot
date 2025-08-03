@@ -17,6 +17,9 @@ using System.Timers;
 using Discord.Audio;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Net.Sockets;
+using System.Net;
+using Object = System.Object;
 
 namespace InetBot
 {
@@ -35,9 +38,12 @@ namespace InetBot
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
 
+        private static System.Timers.Timer appealTimer = new();
+
         IAudioClient audioClient;
 
         ulong dummie = 0;
+        ulong ultraDummie = 0;
 
         public async Task Run()
         {
@@ -72,18 +78,32 @@ namespace InetBot
         private async Task AutoModActionExecuted(SocketGuild guild, AutoModRuleAction action, AutoModActionExecutedData data)
         {
             Commands commands = new Commands();
+            commands._user = _client.CurrentUser;
+            commands.isSlashCommand = false;
+            commands._modChannel = guild.GetTextChannel(commands.modChannelID);
+
 
             if (data.AlertMessageId != 0) return;
 
+            //3ds
             if (data.Rule.Id == 976298046214266890)
+            //tsd
             //if (data.Rule.Id == 1357104233262088202)
             {
+
                 if (data.User.Value.Id == dummie)
                 {
+                    if (dummie == ultraDummie)
+                    {
+                        await commands.HandleWarnCommand(data.User.Value, "Repeated piracy (AutoMod)", guild);
+                        return;
+                    }
+
                     EmbedBuilder dummieBuilder = new EmbedBuilder()
                         .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl).WithTitle("__AutoMod triggered!__")
                         .WithDescription($"You are trying to send a message containing a piracy word, which breaks the rules of the server.\n\n" +
-                        $"☠ **While homebrew and flashcart discussion is allowed, talk about piracy or links that redirect to ROM/emulator download sites is strictly prohibited. It's illegal and can lead to all sorts of trouble, simple as that.**")
+                        $"☠ **While homebrew and flashcart discussion is allowed, talk about piracy or links that redirect to ROM/emulator download sites is strictly prohibited. It's illegal and can lead to all sorts of trouble, simple as that.**\n\n")
+                        .WithFooter("This is an automated message. It is merely informative and no action has been taken.")
                         .WithColor(Color.Red);
 
                     EmbedBuilder dummieNotifBuilder = new EmbedBuilder()
@@ -93,6 +113,7 @@ namespace InetBot
 
                     await data.User.Value.SendMessageAsync(embed: dummieBuilder.Build());
                     await guild.GetTextChannel(commands.modChannelID).SendMessageAsync(embed:dummieNotifBuilder.Build());
+                    ultraDummie = dummie;
                     dummie = 0;
                 }
                 else
@@ -132,6 +153,21 @@ namespace InetBot
             }
         }
 
+        private static void tcpListen()
+        {
+            int port = 46672;
+
+            TcpListener server = new TcpListener(IPAddress.Any, port);
+
+            server.Start();
+
+            while (true)
+            {
+                using TcpClient client = server.AcceptTcpClient();
+            }
+        }
+
+
         private async Task Client_Ready()
         {
             _guild = _client.GetGuild(_guildId);
@@ -141,6 +177,13 @@ namespace InetBot
             activityTimer.Elapsed += SetActivity;
             activityTimer.AutoReset = true;
             activityTimer.Enabled = true;
+
+            BanAppeals appeals = new BanAppeals();
+            //appeals.CheckAppeals();
+            //appealTimer.Elapsed += appeals.CheckAppeals;
+
+            Thread thread = new Thread(new ThreadStart(tcpListen));
+            thread.Start();
 
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
@@ -355,7 +398,7 @@ namespace InetBot
         private async Task ReactionHandler(Cacheable<IUserMessage, ulong> cacheable1, Cacheable<IMessageChannel, ulong> cacheable2, SocketReaction reaction)
         {
             Reactions reactions = new Reactions();
-            await reactions.HandleReaction(cacheable1, cacheable2, reaction, _guild);
+            //await reactions.HandleReaction(cacheable1, cacheable2, reaction, _guild);
         }
 
         private async Task MessageRecievedHandler(SocketMessage message)
@@ -380,8 +423,6 @@ namespace InetBot
                 //is this bad? eh
                 await modMail.HandleModMailMessage(message, _guild, _client);
             }
-
-
         }
 
         private async Task ButtonHandler(SocketMessageComponent component)
