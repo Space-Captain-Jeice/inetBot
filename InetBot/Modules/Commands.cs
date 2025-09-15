@@ -1584,12 +1584,8 @@ namespace InetBot.Modules
         private async Task HandleUnwarnCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild)
         {
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
-            List<Punishment> reversedPunishments = new();
+            List<Punishment> reversedPunishments = new List<Punishment>(punishments.punishmentList);
 
-            foreach (var item in punishments.punishmentList)
-            {
-                reversedPunishments.Add(item);
-            }
             reversedPunishments.Reverse();
 
             switch (by)
