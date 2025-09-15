@@ -1700,12 +1700,7 @@ namespace InetBot.Modules
         {
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             List<Punishment> foundPunishments = new();
-            List<Punishment> reversedPunishments = new();
-
-            foreach (var item in punishments.punishmentList)
-            {
-                reversedPunishments.Add(item);
-            }
+            List<Punishment> reversedPunishments = new List<Punishment>(punishments.punishmentList);
 
             reversedPunishments.Reverse();
 
