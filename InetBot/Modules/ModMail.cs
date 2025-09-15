@@ -32,7 +32,7 @@ namespace InetBot.Modules
 
             if (message.Author.IsBot) { return; }
 
-            if (message.Content == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
+            if (message.Content.ToLower() == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
 
             if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
 

@@ -4,16 +4,22 @@ using Discord.WebSocket;
 using FuzzySharp;
 using FuzzySharp.Extractor;
 using FuzzySharp.SimilarityRatio;
+using Google.Apis.Forms.v1.Data;
 using InetBot.Data;
+using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using static System.Collections.Specialized.BitVector32;
 
 
 namespace InetBot.Modules
@@ -37,9 +43,9 @@ namespace InetBot.Modules
         public SocketTextChannel _modChannel;
         
         //3ds:
-        public ulong modChannelID = 259878856507392001;
+        //public ulong modChannelID = 259878856507392001;
         //tsd:
-        //public ulong modChannelID = 440118112977944578;
+        public ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
@@ -174,6 +180,11 @@ namespace InetBot.Modules
             string cmd = msg.Split(" ")[0].ToLower();
 
             if (cmd == "") return;
+
+            if (modCommands.Any(cmd.Contains) && _user.IsBot)
+            {
+                return;
+            }
 
             string reason;
             SocketGuildUser guildUser;
@@ -576,7 +587,10 @@ namespace InetBot.Modules
                         break;
                     case "sd":
                     case "sdcard":
-                        await HandleSDCommand();
+                        string subcommand = "";
+                        if (message.Content.Length > cmd.Length + 2) subcommand = message.Content.Remove(0, cmd.Length + 2);
+
+                        await HandleSDCommand(subcommand);
                         break;
                     case "piracy":
                         await HandlePiracyCommand();
@@ -592,6 +606,10 @@ namespace InetBot.Modules
                     case "emulator":
                     case "emulation":
                         await HandleCitraCommand();
+                        break;
+                    case "vguides":
+                    case "vguide":
+                        await HandleGuideCommand("vguide");
                         break;
                     case "guide":
                         string section = "";
@@ -622,6 +640,12 @@ namespace InetBot.Modules
                     case "idiot":
                         await HandleIdiotCommand();
                         break;
+                    case "8ball":
+                        await Handle8BallCommand();
+                        break;
+                    case "about":
+                        await HandleAboutCommand();
+                        break;
                     default:
                         await HandleUnknownCommand(cmd);
                         break;
@@ -632,14 +656,22 @@ namespace InetBot.Modules
 
         private async Task RespondToSlashCommand(EmbedBuilder embedBuilder)
         {
+            await RespondToSlashCommand(embedBuilder, null);
+        }
+
+        private async Task RespondToSlashCommand(EmbedBuilder embedBuilder, ComponentBuilder? component)
+        {
 
             if (!modCommands.Any(_command.CommandName.Contains))
             {
-                await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false);
+                await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false, components: component.Build());
+
             }
             else
             {
-                await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: true);
+                if (component == null) await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false);
+
+                else await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: true, components: component.Build());
                 await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
             }
         }
@@ -719,14 +751,16 @@ namespace InetBot.Modules
                 "Here is an overview of the commands with examples!\n\n" +
                 "`?otter/dog/cat/bird`\n" + 
                 "Gets a random image of your favourite critter.\n" +
-                "`?format/sd/piracy/panel/citra/n3ds`\n" +
+                "`?format/sd/piracy/panel/citra/n3ds/n2dsxl`\n" +
                 "Provides information about various topics.\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
                 "Gives you information about guides. Optionally points you to guide sections.\n" +
                 "`?rule <1-10>`\n" +
                 "Shows you the specified rule.\n" +
                 "`?ping`\n" +
-                "Get the bots ping to discord.");
+                "Get the bots ping to discord.\n" +
+                "`?about`\n" +
+                "Shows some information about the bot.");
 
             if (isSlashCommand) await RespondToSlashCommand(userReplyBuilder);
             else await RespondToTextCommand(userReplyBuilder);
@@ -737,10 +771,24 @@ namespace InetBot.Modules
             string title = "Oops!";
             string description = "Something went wrong!";
             Color color = Color.DarkerGrey;
+            string url = "";
+
+            bool isNegative = false;
+
+            if (rule < 0)
+            {
+                isNegative = true;
+                rule = -rule;
+            }
 
             switch (rule)
             {
                 //9
+                case 0:
+                    title = "‎ ";
+                    description = "";
+                    color = Color.Parse("#000000");
+                    break;
                 case 1:
                     title = "Rule 1: Be nice";
                     description = "Treat all users in the server with respect and kindness. Everyone is entitled to disagree and have their own opinions, " +
@@ -790,24 +838,30 @@ namespace InetBot.Modules
                     color = Color.Purple;
                     break;
                 case 9:
-                    title = "Rule 9: Obey the mods";
+                    title = "Rule 9: Keep it to English";
+                    description = "Please keep the language in the server to English. It makes discussion and support more fluid accessible to more people. " +
+                        "Feel free to use a translator if you can't communicate otherwise.";
+                    color = Color.DarkPurple;
+                    break;
+                case 10:
+                    title = "Rule 10: Obey the mods";
                     description = "Obey mods at all times. If a mod tells you something, it's in your best interest to listen to them. " +
                         "We are always here to help keep the server running and in good shape in conjunction with the subreddit.";
                     color = Color.DarkMagenta;
                     break;
-                case 10:
-                    title = "Rule 10: Have fun!";
+                case 11:
+                    title = "Rule 11: Have fun!";
                     description = "Do not break this one.";
                     color = Color.Blue;
                     break;
-                case 11:
-                    title = "Rule 11: There is no rule 11";
+                case 12:
+                    title = "Rule 12: There is no rule 12";
                     description = "Go away.";
                     color = Color.Parse("#ff00ff");
                     break;
                 case 34:
                     title = "Rule 34: If it exists, it's not on this server";
-                    description = "Aren't you a funny one";
+                    description = "Don't mind D3R-BOT...";
                     color = Color.Parse("#aae5a4");
                     break;
                 case 42:
@@ -820,6 +874,16 @@ namespace InetBot.Modules
                     description = "Nice.";
                     color = Color.Parse("#922B3E");
                     break;
+                case 404:
+                    title = "Rule 404: Not found";
+                    description = "";
+                    color = Color.Red;
+                    break;
+                case 418:
+                    title = "Rule 418: I'm a teapot";
+                    description = "I cannot brew coffee.";
+                    color = Color.DarkGreen;
+                    break;
                 case 420:
                     title = "Rule 420: Nice.";
                     description = "Nice.";
@@ -830,15 +894,55 @@ namespace InetBot.Modules
                     description = "Rules of furry convention hygene:\n6 hours of sleep per night.\n2 meals per day.\n1 shower per day.\n";
                     color = Color.Parse("#012e56");
                     break;
+                case 0403:
+                    title = "Rule 0403: Wario always wins! Wahaha!";
+                    description = "";
+                    color = Color.DarkPurple;
+                    url = "https://cdn.discordapp.com/attachments/1243605737826160670/1406873568410603620/IMG_1262.jpg";
+                    break;
+                case 0902:
+                    title = "Rule 0902: Own a Wii U";
+                    description = "Just buy one bro.";
+                    color = Color.Parse("#14b7fc");
+                    break;
+                case 0909:
+                    title = "Rule 0909: Japanese Goku guy";
+                    description = "AKA.:\n" +
+                        "Goku mod guy, Goku guy, Smiley, Jiece, Space, Space Captain, Japanese guy, Chinese Goku guy, Chinese character guy, Chinese goku letters guy, " +
+                        "Japanese Goku guy, Japanese symbols guy, Goku, Chinese Goku, Chinese anime guy, Scj, chinese goku mod anime guy, Japanese person, Spacecaptainfurry, Goku Japanese person, China boy, " +
+                        "Furry goku man, Soace Captain Jeice, Lord Jeice, Space Furry Jeice, japanese/british man, yuG ukoG esenapaJ, closet furry mod, chinese letters mod anime guy, Goku man, furryku, Chef, " +
+                        "Juice, Furry boy, Japanese boy, Soace, Furry japanese goku mod, Chinese letter guy, Charger boy, Space Cat Jeice, jeissolini, furjeice, ginyu's red fella, 宇宙機長 ジース, " +
+                        "Chinese Goku Mod Anime Furry Guy, Furry man";
+                    color = Color.Orange;
+                    break;
+                case 8008:
+                case 5318008:
+                    title = $"Rule {rule}: Tits!";
+                    description = "Have some great tits";
+                    color = Color.Blue;
+                    url = "https://www.ivelvalleybirdfood.co.uk/media/blog/blog-cover-Bird-Guide-British-Tit-Family.webp";
+                    break;
                 default:
                     title = "";
                     break;
             }
 
+            if (isNegative)
+            {
+                title = new string(title.ToCharArray().Reverse().ToArray());
+                description = new string(description.ToCharArray().Reverse().ToArray());
+
+                if (rule == 8008 || rule == 5318008)
+                {
+                    url = "https://files.vendell.online/blog-cover-Bird-Guide-British-Tit-Family.webp";
+                }
+            }
+
             var replyBuilder = new EmbedBuilder()
                 .WithTitle(title)
                 .WithColor(color)
-                .WithDescription(description);
+                .WithDescription(description)
+                .WithImageUrl(url);
 
             await RespondToInfoCommand(replyBuilder);
         }
@@ -1595,17 +1699,18 @@ namespace InetBot.Modules
             }
         }
 
-        private async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild)
+
+        private async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild, ulong? guildUserID, int page)
         {
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             List<Punishment> foundPunishments = new();
-
             List<Punishment> reversedPunishments = new();
 
             foreach (var item in punishments.punishmentList)
             {
                 reversedPunishments.Add(item);
             }
+
             reversedPunishments.Reverse();
 
             switch (by)
@@ -1646,9 +1751,10 @@ namespace InetBot.Modules
                         }
                     }
                     break;
+
                 case "moderator":
+
                     var valueMod = guildUser;
-                    int modPunishmentCount = 0;
 
                     //start building the framework of the embed
                     var modEmbedBuilder = new EmbedBuilder()
@@ -1658,20 +1764,51 @@ namespace InetBot.Modules
 
                     foreach (var item in reversedPunishments)
                     {
-                        if (item.modID == valueMod.Id) modPunishmentCount++;
-
-                        if (item.modID == valueMod.Id && modEmbedBuilder.Fields.Count < 6)
+                        if (item.modID == valueMod.Id)
                         {
-                            string typeText = getTypeTexts(item.type)[0];
-                            string emote = getTypeTexts(item.type)[1];
-
-                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:dart: <@{item.targetID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                            foundPunishments.Add(item);
                         }
                     }
 
-                    modEmbedBuilder.WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History ~ Total: {modPunishmentCount}", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl());
+                    modEmbedBuilder.WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History ~ Total: {foundPunishments.Count}", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl());
+                    //if theres <= 6 found punishments we can put them on one page...
+                    if (foundPunishments.Count <= 6)
+                    {
+                        foreach (Punishment item in foundPunishments)
+                        {
+                            //get message and emote strings
+                            string typeText = getTypeTexts(item.type)[0];
+                            string emote = getTypeTexts(item.type)[1];
 
-                    if (isSlashCommand) await RespondToSlashCommand(modEmbedBuilder);
+                            //add field for each
+                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+
+                        }
+
+                        foundPunishments.Clear();
+                    }
+                    else
+                    {
+                        //... if not, we will have to create a paginated view, by adding the six newest punishments, and removing them
+                        for (int i = 0; i < 6; i++)
+                        {
+                            Punishment item = foundPunishments.LastOrDefault();
+
+                            //get message and emote strings
+                            string typeText = getTypeTexts(item.type)[0];
+                            string emote = getTypeTexts(item.type)[1];
+
+                            //add field for each punishment
+                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+
+                            //and remove the punishment from the list again
+                            foundPunishments.Remove(item);
+                        }
+                    }
+                    var modComponentBuilder = new ComponentBuilder()
+                        .WithButton("Next", $"punishment-next-{by}-{guildUser.Id}-{page+1}");
+
+                    if (isSlashCommand) await RespondToSlashCommand(modEmbedBuilder, modComponentBuilder);
                     else await RespondToTextCommand(modEmbedBuilder);
                     break;
                 case "target":
@@ -1732,17 +1869,22 @@ namespace InetBot.Modules
                             //and remove the punishment from the list again
                             foundPunishments.Remove(item);
                         }
-                        var componentBuilder = new ComponentBuilder()
+                        var targetComponentBuilder = new ComponentBuilder()
                             .WithButton("Next", "next-button");
 
                         //send out the embed
-                        if (isSlashCommand) await RespondToSlashCommand(targetEmbedBuilder);
+                        if (isSlashCommand) await RespondToSlashCommand(targetEmbedBuilder, targetComponentBuilder);
                         else await RespondToTextCommand(targetEmbedBuilder);
 
                         //commandPass = command;
                     }
                     break;
             }
+        }
+
+        private async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild)
+        {
+            await HandleGetpunishmentsCommand(guildUser, by, valueID, guild, null, 1);
         }
 
         private async Task HandleRoleCommand(string action, SocketGuildUser guildUser, IRole role)
@@ -1968,9 +2110,30 @@ namespace InetBot.Modules
             if(_user.IsBot) return;
 
             var msg = _message;
-            await _message.DeleteAsync();
 
-            await msg.Channel.SendMessageAsync(msg.Content.Remove(0,5));
+            string message = msg.Content.Remove(0, 5).TrimStart();
+
+            var embedBuilder = new EmbedBuilder()
+                .WithAuthor($"{_message.Author.Username} [{_message.Author.Id}]", _message.Author.GetAvatarUrl() ?? _message.Author.GetDefaultAvatarUrl())
+                .WithTitle("__I can't do that!__")
+                .WithDescription($"You think you're funny?!")
+                .WithColor(Color.Red)
+                .WithCurrentTimestamp();
+
+            if (message.StartsWith("?") && modCommands.Any(message.Substring(1).StartsWith))
+            {
+                await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+                return;
+            }
+
+            if (message.Contains("@everyone") || message.Contains("@here"))
+            {
+                await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+                return;
+            }
+
+            await _message.DeleteAsync();
+            await msg.Channel.SendMessageAsync(message);
         }
 
         private async Task HandlePingCommand()
@@ -1980,7 +2143,7 @@ namespace InetBot.Modules
 
             for (int i = 0; i < 4; i++)
             {
-                PingReply reply = ping.Send("stockholm5485.discord.gg", 10000);
+                PingReply reply = ping.Send("latency.discord.media", 10000);
                 pings.Add(reply.RoundtripTime);
             }
 
@@ -1988,7 +2151,7 @@ namespace InetBot.Modules
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle(":ping_pong: Pong!")
                 .WithDescription($"My current ping: **{Math.Truncate(pings.Average())}**")
-                .WithFooter("Average of 5 pings to stockholm5485.discord.gg")
+                .WithFooter("Average of 5 pings to latency.discord.media")
                 .WithColor(Color.Green)
                 .WithCurrentTimestamp();
 
@@ -2000,24 +2163,63 @@ namespace InetBot.Modules
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"About SD-Card formatting")
-                .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
+                .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n" +
+                $"For further information, please check [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card)\n\n" +
                 $"The 3DS family can only read SD-Cards if theyre formatted in **FAT32**.\n" +
                 $"For cards __under__ **32GB** this can be achieved with any standard tool.\n" +
-                $"For cards __above__ **32GB** on Windows you will need a special tool,\n which can be downloaded [here](http://ridgecrop.co.uk/index.htm?guiformat.htm).\n" +
+                $"For cards __above__ **32GB** use [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card).\n" +
                 $"**64GB** cards need an **Allocation unit size** of __32KB/32768 bytes__,\n **128GB** need __64KB/65536 bytes__.\n" +
                 $"Cards above **128GB** are __not__ recommended because of performance issues.");
+            
             await RespondToInfoCommand(replyBuilder);
         }
-        private async Task HandleSDCommand()
+
+        private async Task HandleSDCommand(string subcommand)
         {
-            var replyBuilder = new EmbedBuilder()
-                .WithTitle($"About SD-Cards")
-                .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
+            Console.WriteLine(subcommand);
+
+            string title = "Oops!";
+            string description = "Something went wrong!";
+            Color color = Color.DarkerGrey;
+
+            if (string.IsNullOrEmpty(subcommand))
+            {
+                title = "About SD-Cards";
+                description = "For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
                 $"The 3DS family *can* take cards up to 2TB. However this is not recommended as you will run into issues with cards larger than 128GB.\n" +
                 $"Cards **above 32GB** will have to be specially formatted. Consult `?formatting` for more information.\n" +
                 $"Buy SD cards from reputable brands(SanDisk, Samsung, Kingston, etc...). Never buy used cards or cards from questionable sources like AliExpress or Wish.\n" +
-                $"Card speed is irrelevant for the 3DS as it is limited to 4MB/s (Class 4). Faster speeds will only benefit you when transferring files from your PC to the card.");
+                $"Card speed is irrelevant for the 3DS as it is limited to 4MB/s (Class 4). Faster speeds will only benefit you when transferring files from your PC to the card.";
+                color = Color.Purple;
+            }
+            else
+            {
+                switch (subcommand)
+                {
+                    case "transfer":
+                        title = "Switching SD-Cards";
+                        description = "1) Make sure your new SD-Card is in FAT32. Check `?format` for more information.\n" +
+                            "2) Copy all of the files and folders on the old SD-Card to a folder on your PC.\n" +
+                            "3) Safely eject the SD-Card from your computer and insert the new one.\n" +
+                            "4) Copy all of the files from your PC to the new SD-Card.\n" +
+                            "5) Done!";
+                        break;
+                    default:
+                        title = "About SD-Cards";
+                        description = "For general information, please check[the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n\n" +
+                        $"The 3DS family *can* take cards up to 2TB. However this is not recommended as you will run into issues with cards larger than 128GB.\n" +
+                        $"Cards **above 32GB** will have to be specially formatted. Consult `?formatting` for more information.\n" +
+                        $"Buy SD cards from reputable brands(SanDisk, Samsung, Kingston, etc...). Never buy used cards or cards from questionable sources like AliExpress or Wish.\n" +
+                        $"Card speed is irrelevant for the 3DS as it is limited to 4MB/s (Class 4). Faster speeds will only benefit you when transferring files from your PC to the card.";
+                        color = Color.Purple;
+                        break;
+                }
+            }
 
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle(title)
+                .WithColor(color)
+                .WithDescription(description);
 
             await RespondToInfoCommand(replyBuilder);
         }
@@ -2070,10 +2272,9 @@ namespace InetBot.Modules
             if (string.IsNullOrEmpty(section))
             {
                 title = "About guides";
-                description = "Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
-                $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
-                $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still decide to follow one, you are **on your own** as " +
-                $"we will __not__ be able to offer help in case something goes wrong.";
+                description = "The guide is available at **[3ds.hacks.guide](https://3ds.hacks.guide/)**, use that when hacking your system!\n\n" +
+                $"__3ds.hacks.guide__ is an easy to use, step by step guide that is always kept up to date by the community. If you are having issues during the process feel free to ask for help here " +
+                $"and we will try to solve your issue!";
                 color = Color.Purple;
             }
             else
@@ -2119,12 +2320,22 @@ namespace InetBot.Modules
                             "Otherwise you need to [hack your console first](https://3ds.hacks.guide)";
                         color = Color.LightOrange;
                         break;
-                    default:
-                        title = "About guides";
+                    case "videoguides":
+                    case "videoguide":
+                    case "vguide":
+                    case "vguides":
+                        title = "About video guides";
                         description = "Please **only use [3ds.hacks.guide](https://3ds.hacks.guide/)** when hacking your system.\n\n" +
                         $"__3ds.hacks.guide__ is always kept up to date by the community and is a constant that allows us to effectively help you when you stumble upon an issue, since we know what process you followed.\n" +
                         $"Other written and video guides are often out of date, or provide spotty information so you are advised **against** using them. If you still decide to follow one, you are **on your own** as " +
-                        $"we will __not__ be able to offer help in case something goes wrong.";
+                        $"we will __not__ be able to offer help in case something goes wrong. We also strongly advise **against** using AI tools as they frequently give inaccurate or dangerous advice.";
+                        color = Color.Red;
+                        break;
+                    default:
+                        title = "About guides";
+                        description = "The guide is available at **[3ds.hacks.guide](https://3ds.hacks.guide/)**, use that when hacking your system!\n\n" +
+                        $"__3ds.hacks.guide__ is an easy to use, step by step guide that is always kept up to date by the community. If you are having issues during the process feel free to ask for help here " +
+                        $"and we will try to solve your issue!";
                         color = Color.Purple;
                         break;
                 }
@@ -2159,6 +2370,8 @@ namespace InetBot.Modules
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About the New 2DS XL")
                 .WithDescription("We don't recommend buying the New 2DS XL for a multitude of reasons:\n" +
+                "- Higher rate of FCRAM failure\n" +
+                "- Higher rate of NAND failure\n" +
                 "- No 3D (obviously)\n" +
                 "- Low quality build despite being in the \"New\" line\n" +
                 "- High price despite being a budget console\n" +
@@ -2166,12 +2379,10 @@ namespace InetBot.Modules
                 "- Backplate uses tri-point screws despite other models using #00 JIS\n" +
                 "- Tiny stylus\n" +
                 "- Hinge prone to snapping\n" +
-                "- High rate of FCRAM failure\n" +
                 "- Difficult to repair (e.g battery glued in place)\n" +
                 "- Lower battery capacity (1500mAh vs 1750mAh)\n" +
                 "- No charging cradle\n" +
                 "- LCD light bleeds through the shell on orange and white models\n" +
-                "- Higher rate of NAND failure\n" +
                 "- Matte finish is prone to scratching\n\n" +
                 "We are of course not saying to get rid of it if you already own one, but if you are in the market for a new 3DS it's best to avoid the n2DSXL for the reasons above.");
 
@@ -2229,6 +2440,62 @@ namespace InetBot.Modules
                 .WithTitle($"{_message.Author.Username} is an idiot!")
                 .WithImageUrl($"https://cdn.discordapp.com/attachments/1227707463340523590/1363979968387874867/image.png")
                 .WithFooter("hahahahahahahahahahaha");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+        private async Task Handle8BallCommand()
+        {
+            string[] responses = ["It is certain", "It is decidedly so", "Without a doubt", "You may rely on it", "As I see it, yes", "Yes definitely", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don’t count on it", "My reply is no", "My sources say no", "Very doubtful", "Outlook not so good"];
+            Discord.Color color = Color.Default;
+
+            Random rnd = new Random();
+            int num = rnd.Next(responses.Length);
+
+            if (num <= 10) color = Color.Green;
+            if (num > 10 && num <= 15) color = Color.Orange;
+            if (num > 15) color = Color.Red;
+
+
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($":8ball: Heres your answer {_message.Author.Username}:")
+                .WithDescription($"{responses[num]}")
+                .WithColor(color);
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
+        }
+
+        private async Task HandleAboutCommand()
+        { 
+            var attribute = Assembly.GetExecutingAssembly().GetCustomAttribute<BuildDateAttribute>();
+            DateTime buildTime = attribute?.DateTime ?? default;
+
+            PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
+            ModMailTicketFileRoot modmails = ModMailTicketFileRoot.GetModMailTickets();
+
+            DateTime startTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
+            TimeSpan uptime = (DateTime.Now - startTime) / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond;
+
+            int counter = 0;
+
+            foreach (Punishment item in punishments.punishmentList)
+            {
+                if (item.targetID == 1267418843337199661) counter++;            
+            }
+
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"About me!")
+                .WithDescription($"Hey! I'm **Inet-Kun**, a custom bot developed by **Vendell** for the **r/3DS** discord server. Here's a few things about me!\n" +
+                $"I'm written in **C# .NET 8.0** using **Discord.Net v3.18.0**.\n" +
+                $"Currently running on **{RuntimeInformation.OSDescription}**\n\n" +
+                $":octagonal_sign: Total Punishments: **{punishments.punishmentIndex}**\n" +
+                $":envelope: Total Modmails: **{modmails.modmailIndex}**\n" +
+                $":no_entry: My punishments: **{counter}**\n\n" +
+                $":tools: Built on **{buildTime}**\n" +
+                $":clock1: Process uptime: **{uptime}**\n" +
+                $":page_facing_up: Lines of code: **~4000**")
+                .WithFooter("Thank you for using! <3");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
             else await RespondToTextCommand(replyBuilder);

@@ -16,7 +16,7 @@ namespace InetBot.Modules
 
 
 
-            await component.RespondAsync("Not implemeted");
+            await component.RespondAsync("jeice is a furry");
         }
     }
 }

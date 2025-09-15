@@ -31,9 +31,9 @@ namespace InetBot
         private SocketGuild _guild;
 
         //3ds
-        private ulong _guildId = 248504507430993921;
+        //private ulong _guildId = 248504507430993921;
         //tsd
-        //private ulong _guildId = 421017607710441492;
+        private ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
@@ -407,10 +407,10 @@ namespace InetBot
             //TextCommands textCommands = new();
             Commands commands = new Commands();
 
-            if (message.Channel.Id == 259878856507392001 && message.Author.Id == 271382258525405184 && message.Embeds.FirstOrDefault().Author.Value.Name.Contains("Inet-kun"))
-            {
-                message.DeleteAsync();
-            }
+            //if (message.Channel.Id == 259878856507392001 && message.Author.Id == 271382258525405184 && message.Embeds.FirstOrDefault().Author.Value.Name.Contains("Inet-kun"))
+            //{
+            //    message.DeleteAsync();
+            //}
 
             if (message.Content.StartsWith("?"))
             {
@@ -428,6 +428,19 @@ namespace InetBot
         private async Task ButtonHandler(SocketMessageComponent component)
         {
             Buttons buttons = new();
+
+            string customId = component.Data.CustomId;
+
+            if (customId.StartsWith("punishment-next"))
+            {
+                string[] args = customId.Split('-');
+
+                string by = args[2];
+                ulong guildUserId = ulong.Parse(args[3]);
+                int page = int.Parse(args[4]);
+
+                Console.WriteLine($"{by} {guildUserId} {page}");
+            }
 
             switch (component.Data.CustomId)
             {
