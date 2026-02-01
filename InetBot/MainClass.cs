@@ -1,24 +1,25 @@
-﻿using Discord.WebSocket;
-using Discord;
+﻿using Discord;
+using Discord.Audio;
+using Discord.Commands;
+using Discord.Net;
+using Discord.WebSocket;
+using Google.Apis.Forms.v1.Data;
+using InetBot.Data;
+using InetBot.Modules;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
-using Discord.Commands;
-using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.CompilerServices;
-using Discord.Net;
-using Newtonsoft.Json;
-using InetBot.Modules;
-using InetBot.Data;
-using System.Security;
 using System.Timers;
-using Discord.Audio;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Net.Sockets;
-using System.Net;
 using Object = System.Object;
 
 namespace InetBot
@@ -31,9 +32,9 @@ namespace InetBot
         private SocketGuild _guild;
 
         //3ds
-        //private ulong _guildId = 248504507430993921;
+        private ulong _guildId = 248504507430993921;
         //tsd
-        private ulong _guildId = 421017607710441492;
+        //private ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
@@ -65,6 +66,7 @@ namespace InetBot
             _client.SlashCommandExecuted += SlashCommandHandler;
             _client.ButtonExecuted += ButtonHandler;
             _client.ReactionAdded += ReactionHandler;
+            _client.UserJoined += JoinHandler;
 
             var token = BotToken.token;
 
@@ -81,7 +83,6 @@ namespace InetBot
             commands._user = _client.CurrentUser;
             commands.isSlashCommand = false;
             commands._modChannel = guild.GetTextChannel(commands.modChannelID);
-
 
             if (data.AlertMessageId != 0) return;
 
@@ -127,6 +128,26 @@ namespace InetBot
         {
             Commands commands = new Commands();
             //await commands.HandleAuditLog(logEntry, guild, _client);
+        }
+
+        private async Task JoinHandler(SocketGuildUser guildUser)
+        {
+            PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
+            List<Punishment> reversedPunishments = new();
+
+            foreach (var item in punishments.punishmentList)
+            {
+                reversedPunishments.Add(item);
+            }
+            reversedPunishments.Reverse();
+
+            foreach (var reversedItem in reversedPunishments)
+            {
+                if (reversedItem.targetID == guildUser.Id && reversedItem.type == Punishment.Type.NOHELP && reversedItem.active)
+                {
+                    await guildUser.AddRoleAsync(1394395701076557844);
+                }
+            }
         }
 
         private async void SetActivity(Object source, ElapsedEventArgs e)
@@ -273,6 +294,18 @@ namespace InetBot
             .WithDescription("Unmutes user.")
             .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to unmute", isRequired: true);
 
+            var nohelpCommand = new SlashCommandBuilder()
+            .WithName("nohelp")
+            .WithDefaultMemberPermissions(GuildPermission.KickMembers)
+            .WithDescription("Gives user the No Help role, removing their ability to post in #hacking and #questions-and-support.")
+            .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to nohelp", isRequired: true);
+
+            var yeshelpCommand = new SlashCommandBuilder()
+            .WithName("yeshelp")
+            .WithDefaultMemberPermissions(GuildPermission.KickMembers)
+            .WithDescription("Removes the No Help role from the user.")
+            .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to yeshelp", isRequired: true);
+
             var getpunishmentsCommand = new SlashCommandBuilder()
             .WithName("getpunishments")
             .WithDefaultMemberPermissions(GuildPermission.KickMembers)
@@ -346,6 +379,9 @@ namespace InetBot
 
                 //await _guild.CreateApplicationCommandAsync(muteCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unmuteCommand.Build());
+
+                //await _guild.CreateApplicationCommandAsync(nohelpCommand.Build());
+                //await _guild.CreateApplicationCommandAsync(yeshelpCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(getpunishmentsCommand.Build());
 
@@ -440,14 +476,13 @@ namespace InetBot
                 int page = int.Parse(args[4]);
 
                 Console.WriteLine($"{by} {guildUserId} {page}");
-            }
 
-            switch (component.Data.CustomId)
+                await buttons.HandlePunishmentNextButton(component, _guild);
+
+            }
+            else if (customId.StartsWith("punishment-share"))
             {
-                case "punishment-next-button":
-                    await buttons.PunishmentNextButton(component);
-                    break;
-                    
+                await buttons.HandlePunishmentShareButton(component);
             }
         }
 

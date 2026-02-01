@@ -35,7 +35,8 @@ namespace InetBot.Data
             WARN = 1,
             MUTE,
             KICK,
-            BAN
+            BAN,
+            NOHELP
         }
     }
 

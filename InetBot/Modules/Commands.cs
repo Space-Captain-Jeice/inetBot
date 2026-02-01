@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using FuzzySharp;
 using FuzzySharp.Extractor;
 using FuzzySharp.SimilarityRatio;
-using Google.Apis.Forms.v1.Data;
 using InetBot.Data;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
@@ -17,8 +16,11 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using static InetBot.Data.User;
 using static System.Collections.Specialized.BitVector32;
 
 
@@ -26,7 +28,11 @@ namespace InetBot.Modules
 {
     public class Commands
     {
-        public bool isSlashCommand;
+        public EmbedBuilder returnEmbedBuilder;
+        public ComponentBuilder returnComponentBuilder;
+        public ulong returnMessageID;
+
+        public bool isSlashCommand = false;
         bool userHasPerms = false;
 
         SocketSlashCommand _command;
@@ -34,24 +40,28 @@ namespace InetBot.Modules
 
         public SocketUser _user;
         SocketUserMessage _userMessage;
+        SocketGuild _guild;
 
         string by = "";
         string valueID = "";
 
-        string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
-        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formst", "formatting", "sd", "sdcard", "piracy", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb"];
+        string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
+        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb", "balance", "no", "leaderboard"];
         public SocketTextChannel _modChannel;
         
         //3ds:
-        //public ulong modChannelID = 259878856507392001;
+        public ulong modChannelID = 259878856507392001;
         //tsd:
-        public ulong modChannelID = 440118112977944578;
+        //public ulong modChannelID = 440118112977944578;
 
         //
         // Summary:
         //     Handle a SocketSlashCommand.
         public async Task HandleCommand(SocketSlashCommand command, SocketGuild guild, DiscordSocketClient client)
         {
+            if (!modCommands.Any(command.CommandName.Contains)) await command.DeferAsync(false);
+            else await command.DeferAsync(true);
+            
             _command = command;
             _user = command.User;
 
@@ -121,6 +131,16 @@ namespace InetBot.Modules
 
                     await HandleUnmuteCommand(guildUser, guild);
                     break;
+                case "nohelp":
+                    guildUser = (SocketGuildUser)command.Data.Options.First().Value;
+
+                    await HandleNohelpCommand(guildUser, guild);
+                    break;
+                case "yeshelp":
+                    guildUser = (SocketGuildUser)command.Data.Options.First().Value;
+
+                    await HandleYeshelpCommand(guildUser, guild);
+                    break;
                 case "warn":
                     guildUser = (SocketGuildUser)command.Data.Options.First().Value;
                     reason = (string)command.Data.Options.ElementAt(1);
@@ -175,6 +195,7 @@ namespace InetBot.Modules
             _message = message;
             _user = message.Author;
             _userMessage = message as SocketUserMessage;
+            _guild = guild;
 
             string msg = message.Content.Remove(0, 1);
             string cmd = msg.Split(" ")[0].ToLower();
@@ -190,6 +211,7 @@ namespace InetBot.Modules
             SocketGuildUser guildUser;
 
             SocketGuildUser guildUser1 = _user as SocketGuildUser;
+
 
             _modChannel = guild.GetTextChannel(modChannelID);
 
@@ -412,6 +434,54 @@ namespace InetBot.Modules
 
                         await HandleUnmuteCommand(guildUser, guild);
                         break;
+                    case "nohelp":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
+
+                        if (message.Content.Length <= 7)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?nohelp <@user>`\n?nohelp <@177732626424135680>.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
+
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
+
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+
+                        await HandleNohelpCommand(guildUser, guild);
+                        break;
+                    case "yeshelp":
+                        if (!guildUser1.GuildPermissions.KickMembers)
+                        {
+                            await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
+                            return;
+                        }
+
+                        if (message.Content.Length <= 7)
+                        {
+                            var errorBuilder = new EmbedBuilder()
+                                .WithAuthor($"{message.Author.Username} [{message.Author.Id}]", message.Author.GetAvatarUrl() ?? message.Author.GetDefaultAvatarUrl())
+                                .WithTitle("__Syntax:__")
+                                .WithDescription($"`?yeshelp <@user>`\n?yeshelp <@177732626424135680>.")
+                                .WithColor(Color.Red)
+                                .WithCurrentTimestamp();
+
+                            await _userMessage.ReplyAsync(embed: errorBuilder.Build());
+                            return;
+                        }
+
+                        guildUser = message.MentionedUsers.First() as SocketGuildUser;
+
+                        await HandleYeshelpCommand(guildUser, guild);
+                        break;
                     case "warn":
                         if (!guildUser1.GuildPermissions.KickMembers)
                         {
@@ -564,9 +634,28 @@ namespace InetBot.Modules
                         break;
                     case "rule":
                     case "rules":
+                        long bet = 0;
                         int rule = int.Parse(message.Content.Split(" ")[1]);
+                        try
+                        {
+                            bet = long.Parse(message.Content.Split(" ")[2]);
 
-                        await HandleRulesCommand(rule);
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+
+                        await HandleRulesCommand(rule, bet, guildUser1);
+                        break;
+                    case "balance":
+                    case "bank":
+                        await HandleBalanceCommand();
+
+                        break;
+                    case "leaderboard":
+                        await HandleLeaderboardCommand();
+
                         break;
                     case "say":
                         if (!guildUser1.GuildPermissions.KickMembers)
@@ -577,6 +666,9 @@ namespace InetBot.Modules
 
                         await HandleSayCommand();
                         break;
+                    case "no":
+                        await HandleNoCommand();
+                        break;
                     case "ping":
                         await HandlePingCommand();
                         break;
@@ -584,6 +676,9 @@ namespace InetBot.Modules
                     case "formst":
                     case "formatting":
                         await HandleFormatCommand();
+                        break;
+                    case "formatbutgood":
+                        await HandleFormatbutgoodCommand();
                         break;
                     case "sd":
                     case "sdcard":
@@ -594,6 +689,9 @@ namespace InetBot.Modules
                         break;
                     case "piracy":
                         await HandlePiracyCommand();
+                        break;
+                    case "piracybutgood":
+                        await HandlePiracybutgoodCommand();
                         break;
                     case "tnips":
                     case "panel":
@@ -664,35 +762,65 @@ namespace InetBot.Modules
 
             if (!modCommands.Any(_command.CommandName.Contains))
             {
-                await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false, components: component.Build());
-
+                if (component == null) await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: false);
+                else await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: false, components: component.Build());
             }
             else
             {
-                if (component == null) await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: false);
-
-                else await _command.RespondAsync(embed: embedBuilder.Build(), ephemeral: true, components: component.Build());
+                if (component == null) await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: true);
+                else await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: true, components: component.Build());
+                
                 await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
             }
         }
 
         private async Task RespondToTextCommand(EmbedBuilder embedBuilder)
         {
+            await RespondToTextCommand(embedBuilder, null);
+        }
+
+        private async Task RespondToTextCommand(EmbedBuilder embedBuilder, ComponentBuilder? component)
+        {
             if (_message != null)
             {
+                if (_message.Content == "?no")
+                {
+                    if (_userMessage.Reference != null)
+                    {
+                        await _userMessage.DeleteAsync();
+                        await _userMessage.ReferencedMessage.ReplyAsync(embed: embedBuilder.Build());
+                        return;
+                    }
+
+                    await _userMessage.DeleteAsync();
+                    await _userMessage.Channel.SendMessageAsync(embed: embedBuilder.Build());
+                    return;
+                }
+
                 if (!modCommands.Any(_message.Content.Contains))
                 {
                     await _userMessage.ReplyAsync(embed: embedBuilder.Build());
                 }
                 else
                 {
+                    if (component == null)
+                    {
+                        await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
+                        return;
+                    }
+
+                    returnMessageID = _modChannel.SendMessageAsync(embed: embedBuilder.Build(), components: component.Build()).Result.Id;
                     await _userMessage.DeleteAsync();
-                    await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
+
                 }
             }
-            else { await _modChannel.SendMessageAsync(embed: embedBuilder.Build()); }
+            else 
+            { 
+                await _modChannel.SendMessageAsync(embed: embedBuilder.Build()); 
+            }
 
         }
+
 
         private async Task RespondToInfoCommand(EmbedBuilder embedBuilder)
         {
@@ -726,13 +854,16 @@ namespace InetBot.Modules
                     "'/mute <@177732626424135680> 2h He just keeps spamming em.'\n" +
                     "'/mute <@177732626424135680> 7d I have had enough.'\n" +
                     "Times out the specified user for a specified duration. Durations are combineable.\n\n" +
+                    "`/nohelp <@user>`\n" +
+                    "'/nohelp <@177732626424135680>'\n" +
+                    "Nohelps the specified user, removing their ability to talk in <#269822066474090497> and <#1019955967410065418>.\n\n" +
                     "`/kick <@user> <reason>`\n" +
                     "'/kick <@177732626424135680> Didnt post a daily otter picture.'\n" +
                     "Kicks the specified user.\n\n" +
                     "`/ban <@user> <reason>`\n" +
                     "'/ban <@177732626424135680> Said he would never post otters again.'\n" +
                     "Bans the specified user.\n\n" +
-                    "You can undo all punishments with `unwarn`, `unmute`, `unkick` and `unban`. unwarn and unkick will just disable the punishments for the user.\n\n" +
+                    "You can undo all punishments with `unwarn`, `unmute`, `yeshelp`, `unkick` and `unban`. unwarn and unkick will just disable the punishments for the user.\n\n" +
                     "__**Looking up punishments**__\n" +
                     "In case you want to look up past punishments, you can do so by the punishment ID, the executing moderator or the target user.\n" +
                     "`/getpunishments <id/mod/target> <id/@user>`\n" +
@@ -751,7 +882,7 @@ namespace InetBot.Modules
                 "Here is an overview of the commands with examples!\n\n" +
                 "`?otter/dog/cat/bird`\n" + 
                 "Gets a random image of your favourite critter.\n" +
-                "`?format/sd/piracy/panel/citra/n3ds/n2dsxl`\n" +
+                "`?format/sd <transfer>/piracy/panel/citra/n3ds/n2dsxl`\n" +
                 "Provides information about various topics.\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
                 "Gives you information about guides. Optionally points you to guide sections.\n" +
@@ -766,12 +897,14 @@ namespace InetBot.Modules
             else await RespondToTextCommand(userReplyBuilder);
         }
 
-        private async Task HandleRulesCommand(int rule)
+        private async Task HandleRulesCommand(int rule, long bet, SocketGuildUser guildUser)
         {
             string title = "Oops!";
             string description = "Something went wrong!";
             Color color = Color.DarkerGrey;
             string url = "";
+
+            string[] strings = {"","","",""};
 
             bool isNegative = false;
 
@@ -809,7 +942,7 @@ namespace InetBot.Modules
                     break;
                 case 4:
                     title = "Rule 4: SFW only";
-                    description = "NSFW content is not allowed. This should go without saying. We are a PG-13, user-friendly server and subreddit consisting of people of all ages. " +
+                    description = "NSFW content is not allowed. This should go without saying. We are a server and subreddit consisting of people of all ages. " +
                         "No one wants to see something inappropriate. Take all of that content far away from here.";
                     color = Color.Red;
                     break;
@@ -839,7 +972,7 @@ namespace InetBot.Modules
                     break;
                 case 9:
                     title = "Rule 9: Keep it to English";
-                    description = "Please keep the language in the server to English. It makes discussion and support more fluid accessible to more people. " +
+                    description = "Please keep the language in the server to English. It makes discussion and support more fluid and accessible to more people. " +
                         "Feel free to use a translator if you can't communicate otherwise.";
                     color = Color.DarkPurple;
                     break;
@@ -894,6 +1027,21 @@ namespace InetBot.Modules
                     description = "Rules of furry convention hygene:\n6 hours of sleep per night.\n2 meals per day.\n1 shower per day.\n";
                     color = Color.Parse("#012e56");
                     break;
+                case 777:
+                    title = "Rule 777: 90% of gambling addicts quit right before their big hit.";
+                    strings = gambling(guildUser, bet).Result;
+                    description = $"\n-# >Inet's Casino<\n" +
+                        $"───────────\n" +
+                        $"| {strings[0]} | {strings[1]} | {strings[2]} |\n" +
+                        $"───────────\n\n" +
+                        $"{strings[3]}";
+                    color = Color.Gold;
+                    break;
+                case 1010:
+                    title = "Rule 1010: SpyderDK";
+                    description = "Vendell's bf :3";
+                    color = Color.Parse("#ffe554");
+                    break;
                 case 0403:
                     title = "Rule 0403: Wario always wins! Wahaha!";
                     description = "";
@@ -909,10 +1057,11 @@ namespace InetBot.Modules
                     title = "Rule 0909: Japanese Goku guy";
                     description = "AKA.:\n" +
                         "Goku mod guy, Goku guy, Smiley, Jiece, Space, Space Captain, Japanese guy, Chinese Goku guy, Chinese character guy, Chinese goku letters guy, " +
-                        "Japanese Goku guy, Japanese symbols guy, Goku, Chinese Goku, Chinese anime guy, Scj, chinese goku mod anime guy, Japanese person, Spacecaptainfurry, Goku Japanese person, China boy, " +
+                        "Japanese Goku guy, Japanese symbols guy, Goku, Chinese Goku, Chinese anime guy, Scj, chinese goku mod anime guy, Japanese person, Spacecaptainfurry, Goku Japanese person, " +
                         "Furry goku man, Soace Captain Jeice, Lord Jeice, Space Furry Jeice, japanese/british man, yuG ukoG esenapaJ, closet furry mod, chinese letters mod anime guy, Goku man, furryku, Chef, " +
                         "Juice, Furry boy, Japanese boy, Soace, Furry japanese goku mod, Chinese letter guy, Charger boy, Space Cat Jeice, jeissolini, furjeice, ginyu's red fella, 宇宙機長 ジース, " +
-                        "Chinese Goku Mod Anime Furry Guy, Furry man";
+                        "Chinese Goku Mod Anime Furry Guy, Furry man, British Boy, Furry british chinese goku, Goku pfp, Mec Goku chinois Modérateur d'Anime Furry, Chinese Goku Furry Mod Guy, Arabic Goku, " +
+                        "Jeicd, Keice, japanese furry, British Goku, Mr Furry";
                     color = Color.Orange;
                     break;
                 case 8008:
@@ -938,6 +1087,11 @@ namespace InetBot.Modules
                 }
             }
 
+            if (strings[3].StartsWith("[Sorry Link"))
+            {
+                url = "https://files.vendell.online/morshu-legend-of-zelda.gif";
+            }
+
             var replyBuilder = new EmbedBuilder()
                 .WithTitle(title)
                 .WithColor(color)
@@ -945,6 +1099,344 @@ namespace InetBot.Modules
                 .WithImageUrl(url);
 
             await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleBalanceCommand()
+        {
+            UserFileRoot userFileRoot = UserFileRoot.GetUsers();
+            List<User> userList = userFileRoot.userList;
+
+            User currentUser = null;
+
+            var userEmbed = new EmbedBuilder()
+                .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                .WithTitle($":bank: Your current balance:")
+                .WithFooter("Gamble responsibly. Please.")
+                .WithColor(Color.Green);
+
+            List<User> sortedCoins = userList.OrderByDescending(x => x.coins).ToList();
+            List<User> sortedKappas = userList.OrderByDescending(x => x.kappas).ToList();
+            List<User> sortedCredits = userList.OrderByDescending(x => x.credits).ToList();
+
+            foreach (var item in userList)
+            {
+                if (item.Id == _user.Id)
+                {
+                    currentUser = item;
+                    userEmbed.Description = $"Coins: **{item.coins:n0}**:coin: ({sortedCoins.IndexOf(item)+1})\n" +
+                        $"Kappas: **{item.kappas:n0}**<:kappa:267359233618477057> ({sortedKappas.IndexOf(item) + 1})\n" +
+                        $"Social Credits: **{item.credits:n0}**<:nookstare:756565740022267946> ({sortedCredits.IndexOf(item) + 1})\n";
+                }
+            }
+            if (currentUser == null) userEmbed.Description = "You currently do not have a balance! Please gamble first.";
+
+            if (isSlashCommand) await RespondToSlashCommand(userEmbed);
+            else await RespondToTextCommand(userEmbed);
+
+        }
+
+        private async Task HandleLeaderboardCommand()
+        {
+            UserFileRoot userFileRoot = UserFileRoot.GetUsers();
+            List<User> userList = userFileRoot.userList;
+
+            var userEmbed = new EmbedBuilder()
+                .WithAuthor($"{_guild.Name} [{_guild.Id}]", _guild.IconUrl)
+                .WithTitle($":bank: The Current gambling leaderboards:")
+                .WithFooter("Gamble responsibly. Please.")
+                .WithColor(Color.Green);
+
+            List<User> sortedList = userList.OrderByDescending(x => x.coins).ToList();
+            
+            string coinlist = "";
+            for (int i = 0; i < 5; i++) coinlist = coinlist + $"**{i+1}) {_guild.GetUser(sortedList.ElementAt(i).Id).Username}**: {sortedList.ElementAt(i).coins:n0}:coin:\n";
+            userEmbed.AddField(":coin: Coins", coinlist + "\n", false);
+
+            sortedList = userList.OrderByDescending(x => x.kappas).ToList();
+            string kappalist = "";
+            for (int i = 0; i < 5; i++) kappalist = kappalist + $"**{i + 1}) {_guild.GetUser(sortedList.ElementAt(i).Id).Username}**: {sortedList.ElementAt(i).kappas:n0}<:kappa:267359233618477057>\n";
+            userEmbed.AddField("<:kappa:267359233618477057> Kappas", kappalist + "\n", false);
+
+            sortedList = userList.OrderByDescending(x => x.credits).ToList();
+            string creditlist = "";
+            for (int i = 0; i < 5; i++) creditlist = creditlist + $"** {i + 1} ) {_guild.GetUser(sortedList.ElementAt(i).Id).Username}**: {sortedList.ElementAt(i).credits:n0}<:nookstare:756565740022267946>\n";
+            userEmbed.AddField("<:nookstare:756565740022267946> Social Credits", creditlist + "\n", false);
+
+            if (isSlashCommand) await RespondToSlashCommand(userEmbed);
+            else await RespondToTextCommand(userEmbed);
+
+        }
+
+        private async Task<string[]> gambling(SocketGuildUser guildUser, long bet)
+        {
+            UserFileRoot userFileRoot = UserFileRoot.GetUsers();
+            List<User> userList = userFileRoot.userList;
+
+            User currentUser = null;
+
+            long winnings;
+
+            bool userExists;
+            bool userIsPoor = false;
+
+            foreach (var user in userList)
+            {
+                if (user.Id == _user.Id)
+                {
+                    currentUser = user;
+                }
+            }
+            if (currentUser == null)
+            {
+                currentUser = new User();
+                currentUser.Id = _user.Id;
+                currentUser.coins = 1000;
+                currentUser.kappas = 0;
+                currentUser.credits = 0;
+            }
+
+            string[] returns = ["", "", "", "Sorry! You win nothing!"];
+            string[] symbols = ["🍒", "<:blue3ds:278714406047711232>", "<:switch:740276984810176614>", "<:mk7:777575859229949962>", "<:white3ds:278714365597974538>", "<:pokeball:756565740106285126>", "<:otterthink:1025026234897420299>", ":lemon:", "<:taiyaki:741002591030476874>"]; //9
+            int num1, num2, num3;
+            
+            Random rand = new Random();
+
+            num1 = rand.Next(symbols.Length);
+            num2 = rand.Next(symbols.Length);
+            num3 = rand.Next(symbols.Length);
+
+            returns[0] = symbols[num1];
+            returns[1] = symbols[num2];
+            returns[2] = symbols[num3];
+
+            if (currentUser.coins < 0 && bet != 0)
+            {
+                returns[0] = ":x:";
+                returns[1] = ":x:";
+                returns[2] = ":x:";
+                returns[3] = $"[Sorry Link, I can't give credit. Come back when you're a little MMMMMMMMMMMMM richer!](https://www.youtube.com/watch?v=J8XxuW-Orww&t=13s)\n" +
+                    $"You currently have **{currentUser.coins:n0}**:coin:\nThe bank decided that you are a really bad gambler and will no longer " +
+                    $"grant you any loans. Please contact <@177732626424135680> and beg for mercy.";
+
+                userExists = false;
+
+                foreach (var item in userList)
+                {
+                    if (item.Id == currentUser.Id)
+                    {
+                        item.coins = currentUser.coins;
+                        item.credits = currentUser.credits;
+                        item.kappas = currentUser.kappas;
+                        userExists = true;
+                    }
+                }
+
+                if (!userExists) userList.Add(currentUser);
+
+                await SaveUser(userFileRoot);
+
+                return returns;
+
+            }
+
+            if (bet > currentUser.coins && (currentUser.coins >= 1000 || bet > 1000) && bet != 0)
+            {
+                returns[0] = ":x:";
+                returns[1] = ":x:";
+                returns[2] = ":x:";
+                returns[3] = $"[Sorry Link, I can't give credit. Come back when you're a little MMMMMMMMMMMMM richer!](https://www.youtube.com/watch?v=J8XxuW-Orww&t=13s)\nYou currently have **{currentUser.coins:n0}**:coin:";
+
+                userExists = false;
+
+                foreach (var item in userList)
+                {
+                    if (item.Id == currentUser.Id)
+                    {
+                        item.coins = currentUser.coins;
+                        item.credits = currentUser.credits;
+                        item.kappas = currentUser.kappas;
+                        userExists = true;
+                    }
+                }
+
+                if (!userExists) userList.Add(currentUser);
+
+                await SaveUser(userFileRoot);
+
+                return returns;
+            }
+            else if (bet > currentUser.coins && currentUser.coins < 1000 && bet <= 1000 && bet != 0)
+            {
+                currentUser.coins = bet;
+                userIsPoor = true;
+            }
+
+            if (bet < 0)
+            {
+                returns[0] = ":x:";
+                returns[1] = ":x:";
+                returns[2] = ":x:";
+                returns[3] = $"Sorry! You cannot bet negative coins.";
+
+                userExists = false;
+
+                foreach (var item in userList)
+                {
+                    if (item.Id == currentUser.Id)
+                    {
+                        item.coins = currentUser.coins;
+                        item.credits = currentUser.credits;
+                        item.kappas = currentUser.kappas;
+                        userExists = true;
+                    }
+                }
+
+                if (!userExists) userList.Add(currentUser);
+
+                await SaveUser(userFileRoot);
+
+                return returns;
+            }
+
+            if (num1 == num2 && num1 == num3 && num2 == num3)
+            {
+                switch (num1)
+                {
+                    case 0:
+                        winnings = bet * 112 / 10;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 1:
+                        winnings = bet / 20;
+                        returns[3] = $"Congratulations! You win {winnings:n0}<:nookstare:756565740022267946>!";
+                        currentUser.credits = currentUser.credits + winnings;
+                        break;
+                    case 2:
+                        winnings = bet * 60;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin: and a warn!";
+                        await HandleWarnCommand(guildUser, "Won too hard at the Inet casino.", _guild);
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 3:
+                        //1425224385467388014
+                        winnings = bet * 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin: and a useless role!!";
+                        await guildUser.AddRoleAsync(1425224385467388014);
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 4:
+                        winnings = bet * 50;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 5:
+                        winnings = bet * 70;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 6:
+                        winnings = bet * 20;
+                        returns[3] = $"Congratulations! You win {winnings:n0}<:kappa:267359233618477057>!";
+                        currentUser.kappas = currentUser.kappas + winnings;
+                        break;
+                    case 7:
+                        winnings = bet * 80;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 8:
+                        winnings = bet * 90;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+
+                }
+            }
+            else if (num1 == num2 || num2 == num3)
+            {
+                int winner = 0;
+                if (num1 == num2) winner = num1;
+                if (num2 == num3) winner = num2;
+
+                switch (winner)
+                {
+                    case 0:
+                        winnings = bet * 2;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+
+                        break;
+                    case 1:
+                        winnings = bet * 175 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+
+                        break;
+                    case 2:
+                        winnings = bet * 150 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+
+                        break;
+                    case 3:
+                        winnings = bet * 5;
+                        returns[3] = $"Congratulations! You lose {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins - winnings;
+
+                        break;
+                    case 4:
+                        winnings = bet * 120 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+
+                        break;
+                    case 5:
+                        winnings = bet;
+                        returns[3] = "Congratulations! You broke even!";
+                        currentUser.coins = currentUser.coins + winnings;
+                        break;
+                    case 6:
+                        winnings = bet * 75 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}<:kappa:267359233618477057>!";
+                        currentUser.kappas = currentUser.kappas + winnings;
+
+                        break;
+                    case 7:
+                        winnings = bet * 75 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}<:nookstare:756565740022267946>!";
+                        currentUser.credits = currentUser.credits + winnings;
+                        break;
+                    case 8:
+                        winnings = bet * 110 / 100;
+                        returns[3] = $"Congratulations! You win {winnings:n0}:coin:!";
+                        currentUser.coins = currentUser.coins + winnings;
+
+                        break;
+                }
+            }
+
+            if(userIsPoor) returns[3] += $" You didn't have enough money to complete the bet. So the bank gave you a loan. ";
+            returns[3] += $" You bet {bet:n0}:coin:";
+
+            userExists = false;
+
+            foreach (var item in userList)
+            {
+                if (item.Id == currentUser.Id)
+                {
+                    item.coins = currentUser.coins - bet;
+                    item.credits = currentUser.credits;
+                    item.kappas = currentUser.kappas;
+                    userExists = true;
+                }
+            }
+
+            if (!userExists) userList.Add(currentUser);
+
+            await SaveUser(userFileRoot);
+
+            return returns;
         }
 
         private async Task HandleBanCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
@@ -1518,6 +2010,146 @@ namespace InetBot.Modules
             }
         }
 
+        private async Task HandleNohelpCommand(SocketGuildUser guildUser, SocketGuild guild)
+        {
+            //3ds
+            ulong roleId = 1394395701076557844;
+            //tsd
+            //ulong roleId = 1244394043803304036;
+
+            //Create Punishment in DB and save
+            PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
+            punishments.punishmentIndex++;
+
+            Punishment punishment = new();
+            punishment.targetID = guildUser.Id;
+            punishment.type = Punishment.Type.NOHELP;
+            punishment.reason = "N/A";
+            punishment.duration = "N/A";
+            punishment.modID = _user.Id;
+            punishment.punishmentID = punishments.punishmentIndex;
+            punishment.timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            punishment.active = true;
+
+            //Create Moderator Log
+            var responseBuilder = new EmbedBuilder()
+                .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                .WithTitle("__Nohelp applied successfully__")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been nohelped. #{punishment.punishmentID}")
+                .WithColor(Color.LightOrange)
+                .WithCurrentTimestamp();
+
+            //Create User DM
+            var warnBuilder = new EmbedBuilder()
+                .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
+                .WithTitle("**__Ooops...It looks like you have been nohelped.__**")
+                .WithDescription($"You have been nohelped for being disruptive/unhelpful in the support channels.")
+                .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
+                .AddField("Punishent Type", "NOHELP", true)
+                .AddField("Note", "This removes your access to <#269822066474090497> and <#1019955967410065418>. You've been given the role because you've consistently given out advice that is either incorrect or dangerous, and continued to do so after multiple warnings regarding the issue. If you disagree with the action taken, please reply to this message to open a ModMail ticket. ", false)
+                .WithColor(Color.LightOrange)
+                .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
+                .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
+
+            await guildUser.AddRoleAsync(roleId);
+
+            //Send both
+            try
+            {
+                punishment.notifMsgID = guildUser.SendMessageAsync(embed: warnBuilder.Build()).Result.Id;
+            }
+            catch (AggregateException e)
+            {
+                e.Handle((x) =>
+                {
+                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification and won't be able to open a modmail.");
+                        return true;
+                    }
+
+                    return false;
+                });
+            }
+
+            if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
+            else await RespondToTextCommand(responseBuilder);
+
+            punishments.punishmentList.Add(punishment);
+
+            await SavePunishment(punishments);
+        }
+
+        private async Task HandleYeshelpCommand(SocketGuildUser guildUser, SocketGuild guild)
+        {
+            //3ds
+            ulong roleId = 1394395701076557844;
+            //tsd
+            //ulong roleId = 1244394043803304036;
+
+            PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
+            List<Punishment> reversedPunishments = new();
+
+            await guildUser.RemoveRoleAsync(roleId);
+
+            foreach (var item in punishments.punishmentList)
+            {
+                reversedPunishments.Add(item);
+            }
+            reversedPunishments.Reverse();
+
+            foreach (var reversedItem in reversedPunishments)
+            {
+                if (reversedItem.targetID == guildUser.Id && reversedItem.type == Punishment.Type.NOHELP && reversedItem.active)
+                {
+                    foreach (var item in punishments.punishmentList)
+                    {
+                        if (item.punishmentID == reversedItem.punishmentID)
+                        {
+                            var responseBuilder = new EmbedBuilder()
+                                .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                                .WithTitle("__Yeshelp applied successfully__")
+                                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been rehelped, their punishment **#{item.punishmentID}** has been set to inactive.")
+                                .WithColor(Color.Green)
+                                .WithCurrentTimestamp();
+
+                            var notifBuilder = new EmbedBuilder()
+                                .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
+                                .WithTitle("__You have been rehelped__")
+                                .WithDescription($"Your nohelp **#{item.punishmentID}** has been set to inactive.")
+                                .WithColor(Color.Green)
+                                .WithCurrentTimestamp();
+
+                            try
+                            {
+                                await guildUser.SendMessageAsync(embed: notifBuilder.Build());
+                            }
+                            catch (AggregateException e)
+                            {
+                                e.Handle((x) =>
+                                {
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    {
+                                        responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                                        return true;
+                                    }
+
+                                    return false;
+                                });
+                            }
+
+                            if (isSlashCommand) await RespondToSlashCommand(responseBuilder);
+                            else await RespondToTextCommand(responseBuilder);
+
+                            item.active = false;
+                            await SavePunishment(punishments);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         public async Task HandleWarnCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
         {
             //Create Punishment in DB and save
@@ -1696,11 +2328,19 @@ namespace InetBot.Modules
         }
 
 
-        private async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild, ulong? guildUserID, int page)
+        public async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild, int page)
         {
             PunishmentFileRoot punishments = PunishmentFileRoot.GetPunishments();
             List<Punishment> foundPunishments = new();
             List<Punishment> reversedPunishments = new List<Punishment>(punishments.punishmentList);
+
+            int pagePunishmentIndex;
+            int pagePunishmentMaxIndex = 0;
+
+            int maxPage;
+
+            var componentBuilder = new ComponentBuilder();
+            var embedBuilder = new EmbedBuilder();
 
             reversedPunishments.Reverse();
 
@@ -1741,14 +2381,14 @@ namespace InetBot.Modules
                             else await RespondToTextCommand(idEmbedBuilder);
                         }
                     }
-                    break;
+                    return;
 
                 case "moderator":
 
                     var valueMod = guildUser;
 
                     //start building the framework of the embed
-                    var modEmbedBuilder = new EmbedBuilder()
+                    embedBuilder = new EmbedBuilder()
                         .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                         .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                         .WithColor(Color.LightOrange);
@@ -1761,58 +2401,42 @@ namespace InetBot.Modules
                         }
                     }
 
-                    modEmbedBuilder.WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History ~ Total: {foundPunishments.Count}", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl());
-                    //if theres <= 6 found punishments we can put them on one page...
-                    if (foundPunishments.Count <= 6)
+                    pagePunishmentIndex = (page - 1) * 6;
+                    pagePunishmentMaxIndex = Math.Min(foundPunishments.Count, pagePunishmentIndex + 6);
+
+                    maxPage = Math.Max(int.DivRem(foundPunishments.Count + 5, 6).Quotient, 1);
+
+                    embedBuilder.WithAuthor($"{valueMod.Username} [{valueMod.Id}] ~ Moderation History ~ Total: {foundPunishments.Count} ~ Page {page}/{maxPage}", valueMod.GetAvatarUrl() ?? valueMod.GetDefaultAvatarUrl());
+
+                    for (int i = pagePunishmentIndex; i < pagePunishmentMaxIndex; i++)
                     {
-                        foreach (Punishment item in foundPunishments)
-                        {
-                            //get message and emote strings
-                            string typeText = getTypeTexts(item.type)[0];
-                            string emote = getTypeTexts(item.type)[1];
+                        Punishment item;
 
-                            //add field for each
-                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                        item = foundPunishments.ElementAt(i);
 
-                        }
+                        //get message and emote strings
+                        string typeText = getTypeTexts(item.type)[0];
+                        string emote = getTypeTexts(item.type)[1];
 
-                        foundPunishments.Clear();
+                        //add field for each punishment
+                        embedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:detective: <@{item.targetID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+
+                        //and remove the punishment from the list again
+                        //foundPunishments.Remove(item);
                     }
-                    else
-                    {
-                        //... if not, we will have to create a paginated view, by adding the six newest punishments, and removing them
-                        for (int i = 0; i < 6; i++)
-                        {
-                            Punishment item = foundPunishments.LastOrDefault();
 
-                            //get message and emote strings
-                            string typeText = getTypeTexts(item.type)[0];
-                            string emote = getTypeTexts(item.type)[1];
-
-                            //add field for each punishment
-                            modEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
-
-                            //and remove the punishment from the list again
-                            foundPunishments.Remove(item);
-                        }
-                    }
-                    var modComponentBuilder = new ComponentBuilder()
-                        .WithButton("Next", $"punishment-next-{by}-{guildUser.Id}-{page+1}");
-
-                    if (isSlashCommand) await RespondToSlashCommand(modEmbedBuilder, modComponentBuilder);
-                    else await RespondToTextCommand(modEmbedBuilder);
                     break;
                 case "target":
                     var valueTarget = guildUser;
 
                     //start building the framework of the embed
-                    var targetEmbedBuilder = new EmbedBuilder()
+                    embedBuilder = new EmbedBuilder()
                         .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                         .WithFooter($"Requested by {_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                         .WithColor(Color.LightOrange);
 
                     //Find each matching punishment...
-                    foreach (var item in punishments.punishmentList)
+                    foreach (var item in reversedPunishments)
                     {
                         if (item.targetID == valueTarget.Id && item.active)
                         {
@@ -1821,61 +2445,52 @@ namespace InetBot.Modules
                         }
                     }
 
-                    targetEmbedBuilder.WithAuthor($"{valueTarget.Username} [{valueTarget.Id}] ~ Punishment History ~ Total: {foundPunishments.Count}", valueTarget.GetAvatarUrl() ?? valueTarget.GetDefaultAvatarUrl());
+                    pagePunishmentIndex = (page - 1) * 6;
+                    pagePunishmentMaxIndex = Math.Min(foundPunishments.Count, pagePunishmentIndex + 6);
 
-                    //if theres <= 6 found punishments we can put them on one page...
-                    if (foundPunishments.Count <= 6)
+                    maxPage = Math.Max(int.DivRem(foundPunishments.Count + 5, 6).Quotient, 1);
+
+                    embedBuilder.WithAuthor($"{valueTarget.Username} [{valueTarget.Id}] ~ Punishment History ~ Total: {foundPunishments.Count} ~ Page {page}/{maxPage}", valueTarget.GetAvatarUrl() ?? valueTarget.GetDefaultAvatarUrl());
+
+                    for (int i = pagePunishmentIndex; i < pagePunishmentMaxIndex; i++)
                     {
-                        foreach (Punishment item in foundPunishments)
-                        {
-                            //get message and emote strings
-                            string typeText = getTypeTexts(item.type)[0];
-                            string emote = getTypeTexts(item.type)[1];
+                        Punishment item;
 
-                            //add field for each
-                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
+                        item = foundPunishments.ElementAt(i);
 
-                        }
+                        //get message and emote strings
+                        string typeText = getTypeTexts(item.type)[0];
+                        string emote = getTypeTexts(item.type)[1];
 
-                        //send the embed including fields
-                        if (isSlashCommand) await RespondToSlashCommand(targetEmbedBuilder);
-                        else await RespondToTextCommand(targetEmbedBuilder);
+                        //add field for each punishment
+                        embedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
 
-                        foundPunishments.Clear();
+                        //and remove the punishment from the list again
+                        //foundPunishments.Remove(item);
                     }
-                    else
-                    {
-                        //... if not, we will have to create a paginated view, by adding the six newest punishments, and removing them
-                        for (int i = 0; i < 6; i++)
-                        {
-                            Punishment item = foundPunishments.LastOrDefault();
 
-                            //get message and emote strings
-                            string typeText = getTypeTexts(item.type)[0];
-                            string emote = getTypeTexts(item.type)[1];
-
-                            //add field for each punishment
-                            targetEmbedBuilder.AddField($"{emote} {typeText}", $":clock8: <t:{item.timestamp}:f>\n:hourglass: [`{item.duration}`](https://www.youtube.com/watch?v=SHvhps47Lmc)\n:cop: <@{item.modID}>\n:hash: **#{item.punishmentID}**\n**Reason**:\n`{item.reason}`", inline: true);
-
-                            //and remove the punishment from the list again
-                            foundPunishments.Remove(item);
-                        }
-                        var targetComponentBuilder = new ComponentBuilder()
-                            .WithButton("Next", "next-button");
-
-                        //send out the embed
-                        if (isSlashCommand) await RespondToSlashCommand(targetEmbedBuilder, targetComponentBuilder);
-                        else await RespondToTextCommand(targetEmbedBuilder);
-
-                        //commandPass = command;
-                    }
                     break;
             }
+
+            if (page > 1) componentBuilder.WithButton("<- Prev", $"punishment-next-{by}-{guildUser.Id}-{page - 1}");
+            if (pagePunishmentMaxIndex != foundPunishments.Count)
+            {
+                componentBuilder.WithButton("Next ->", $"punishment-next-{by}-{guildUser.Id}-{page + 1}");
+            }
+            componentBuilder.WithButton("Share", $"punishment-share", ButtonStyle.Secondary);
+
+            returnEmbedBuilder = embedBuilder;
+            returnComponentBuilder = componentBuilder;
+
+            if (page > 1) return;
+
+            if (isSlashCommand) await RespondToSlashCommand(embedBuilder, componentBuilder);
+            else await RespondToTextCommand(embedBuilder, componentBuilder);
         }
 
         private async Task HandleGetpunishmentsCommand(SocketGuildUser? guildUser, string by, string? valueID, SocketGuild guild)
         {
-            await HandleGetpunishmentsCommand(guildUser, by, valueID, guild, null, 1);
+            await HandleGetpunishmentsCommand(guildUser, by, valueID, guild, 1);
         }
 
         private async Task HandleRoleCommand(string action, SocketGuildUser guildUser, IRole role)
@@ -1890,7 +2505,7 @@ namespace InetBot.Modules
                     .WithCurrentTimestamp()
                     .WithColor(Color.Red);
 
-                await _command.RespondAsync(embed: noPermissionBuilder.Build(), ephemeral: true);
+                await _command.FollowupAsync(embed: noPermissionBuilder.Build(), ephemeral: true);
 
                 return;
             }
@@ -1923,7 +2538,7 @@ namespace InetBot.Modules
                             .WithCurrentTimestamp()
                             .WithColor(Color.Red);
 
-                        await _command.RespondAsync(embed: badRoleBuilder.Build(), ephemeral: true);
+                        await _command.FollowupAsync(embed: badRoleBuilder.Build(), ephemeral: true);
 
                         return;
                     }
@@ -1969,7 +2584,7 @@ namespace InetBot.Modules
                             .WithCurrentTimestamp()
                             .WithColor(Color.Red);
 
-                        await _command.RespondAsync(embed: badRoleBuilder.Build(), ephemeral: true);
+                        await _command.FollowupAsync(embed: badRoleBuilder.Build(), ephemeral: true);
 
                         return;
                     }
@@ -2123,8 +2738,27 @@ namespace InetBot.Modules
                 return;
             }
 
-            await _message.DeleteAsync();
-            await msg.Channel.SendMessageAsync(message);
+
+            if (_userMessage.Reference != null)
+            {
+                await _message.DeleteAsync();
+                await _userMessage.ReferencedMessage.ReplyAsync(message);
+            }
+            else
+            {
+                await _message.DeleteAsync();
+                await msg.Channel.SendMessageAsync(message);
+            }
+
+        }
+
+        private async Task HandleNoCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithDescription($"{No.GetRandomNo().reason}");
+
+            if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
+            else await RespondToTextCommand(replyBuilder);
         }
 
         private async Task HandlePingCommand()
@@ -2141,7 +2775,7 @@ namespace InetBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle(":ping_pong: Pong!")
-                .WithDescription($"My current ping: **{Math.Truncate(pings.Average())}**")
+                .WithDescription($"My current ping: **{Math.Truncate(pings.Average())}**ms")
                 .WithFooter("Average of 5 pings to latency.discord.media")
                 .WithColor(Color.Green)
                 .WithCurrentTimestamp();
@@ -2157,11 +2791,20 @@ namespace InetBot.Modules
                 .WithDescription($"For general information, please check [the FAQ](https://discord.com/channels/248504507430993921/1270692745056485417/1271329343058214923)\n" +
                 $"For further information, please check [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card)\n\n" +
                 $"The 3DS family can only read SD-Cards if theyre formatted in **FAT32**.\n" +
-                $"For cards __under__ **32GB** this can be achieved with any standard tool.\n" +
+                $"For cards **32GB** or __under__, formatting is not required before use unless the SD card has previously been formatted to something other than FAT32. If this is the case, use [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card).\n" +
                 $"For cards __above__ **32GB** use [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card).\n" +
                 $"**64GB** cards need an **Allocation unit size** of __32KB/32768 bytes__,\n **128GB** need __64KB/65536 bytes__.\n" +
                 $"Cards above **128GB** are __not__ recommended because of performance issues.");
             
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleFormatbutgoodCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle($"About SD-Card formatting")
+                .WithDescription($"format your card to fat32");
+
             await RespondToInfoCommand(replyBuilder);
         }
 
@@ -2222,9 +2865,19 @@ namespace InetBot.Modules
                 .WithDescription("Piracy is **illegal** and against **Discord TOS**, so we do NOT allow any discussion of it.\n" +
                 "We also can not help with troubleshooting pirated games.\n\n" +
                 "Homebrew and 'hacking' does not automatically mean illegally downloading games or any other copyrighted content.\n" +
-                "Piracy paints the homebrew community in a bad light in legislators and publishers eyes, and gives console makers more incentive to lock down their systems, making the jobs of volunteer " +
+                "Piracy paints the homebrew community in a bad light in legislators and publishers eyes and gives console makers more incentive to lock down their systems, making the jobs of volunteer " +
                 "homebrew developers harder and harder.\n\n" +
-                "Any discussion of piracy or mentioning/sharing links to sites/applications enabling it will be met with a warning, pushback will lead to harsher punishments.");
+                "Any discussion of piracy or mentioning/sharing links to sites/applications enabling it will be met with a warning; pushback will lead to harsher punishments.");
+
+            await RespondToInfoCommand(replyBuilder);
+
+        }
+
+        private async Task HandlePiracybutgoodCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Piracy")
+                .WithDescription("do whatever we arent nintendo");
 
             await RespondToInfoCommand(replyBuilder);
 
@@ -2236,7 +2889,7 @@ namespace InetBot.Modules
                 .WithTitle("About TN vs IPS panels")
                 .WithDescription("In short, the differences are not significant. While the IPS vs TN differences are significant on something like a PC monitor, the differences on a 3DS system are negligible when viewed directly.\n\n" +
                 "**IPS Screens**\n+ Larger viewing angle.\n+ More vivid colors.\n\\- People often complain of a scanline effect when comparing closely with a TN screen.\n\\- Suffers from 'crushed blacks', which means that detail in dark areas is often lost.\n\\- Uses slightly more power, decreasing battery life.\n\n" +
-                "**TN Screens**\n+ Less ghosting.\n+ Detail isn't lost in dark areas.\n\\- Reduced viewing angle/wash out at extreme angles.\n\\- Colors are slightly duller.\n\n" +
+                "**TN Screens**\n+ Detail isn't lost in dark areas.\n\\- More ghosting\n\\- Reduced viewing angle/wash out at extreme angles.\n\\- Colors are slightly duller.\n\n" +
                 "To tell which panels your console has, look at your 3DS from the side or bottom. If the color fades/the screen goes white, it's TN. If it doesn't, it's IPS. If your 3ds has CFW, you can check in the Rosalina menu or with [3DSident](https://github.com/joel16/3DSident/releases) by selecting \"System Info\".");
 
             await RespondToInfoCommand(replyBuilder);
@@ -2363,18 +3016,19 @@ namespace InetBot.Modules
                 .WithDescription("We don't recommend buying the New 2DS XL for a multitude of reasons:\n" +
                 "- Higher rate of FCRAM failure\n" +
                 "- Higher rate of NAND failure\n" +
-                "- No 3D (obviously)\n" +
-                "- Low quality build despite being in the \"New\" line\n" +
-                "- High price despite being a budget console\n" +
-                "- Speakers placed where your hand goes\n" +
-                "- Backplate uses tri-point screws despite other models using #00 JIS\n" +
-                "- Tiny stylus\n" +
                 "- Hinge prone to snapping\n" +
                 "- Difficult to repair (e.g battery glued in place)\n" +
-                "- Lower battery capacity (1500mAh vs 1750mAh)\n" +
-                "- No charging cradle\n" +
+                "- Low quality build despite being in the \"New\" line\n\n" +
+                "Additionally, common complaints include:\n" +
+                "- High price despite being a budget console\n" +
+                "- Lower battery capacity (1300mAh vs 1750mAh)\n" +
                 "- LCD light bleeds through the shell on orange and white models\n" +
-                "- Matte finish is prone to scratching\n\n" +
+                "- Backplate uses tri-point screws despite all other models using #00 JIS\n" +
+                "- Speakers placed where your hand goes\n" +
+                "- Matte finish is prone to scratching\n" +
+                "- Tiny stylus\n" +
+                "- No 3D (obviously)\n" +
+                "- No charging cradle\n" +
                 "We are of course not saying to get rid of it if you already own one, but if you are in the market for a new 3DS it's best to avoid the n2DSXL for the reasons above.");
 
             await RespondToInfoCommand(replyBuilder);
@@ -2485,7 +3139,8 @@ namespace InetBot.Modules
                 $":no_entry: My punishments: **{counter}**\n\n" +
                 $":tools: Built on **{buildTime}**\n" +
                 $":clock1: Process uptime: **{uptime}**\n" +
-                $":page_facing_up: Lines of code: **~4000**")
+                $":zap: Server current power usage: **{PowerUsage.GetPowerUsage().StatusSNS.ENERGY.Power}W**\n" +
+                $":page_facing_up: Lines of code: **~5000**")
                 .WithFooter("Thank you for using! <3");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
@@ -2640,10 +3295,20 @@ namespace InetBot.Modules
                     strings[0] = "Ban";
                     strings[1] = ":hammer:";
                     break;
+                case Punishment.Type.NOHELP:
+                    strings[0] = "Nohelp";
+                    strings[1] = "<:weedpepe:335705076494761984>";
+                    break;
             }
 
             return strings;
         }
+
+        public async Task GetModChannel(SocketGuild guild)
+        {
+            _modChannel = guild.GetTextChannel(modChannelID);
+        }
+
 
         public async Task SavePunishment(PunishmentFileRoot punishments)
         {
@@ -2654,6 +3319,18 @@ namespace InetBot.Modules
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 File.WriteAllText("/home/vendell/inet/punishments.json", JsonConvert.SerializeObject(punishments, Formatting.Indented));
+            }
+        }
+
+        private async Task SaveUser(UserFileRoot users)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\users.json"), JsonConvert.SerializeObject(users, Formatting.Indented));
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                File.WriteAllText("/home/vendell/inet/users.json", JsonConvert.SerializeObject(users, Formatting.Indented));
             }
         }
 

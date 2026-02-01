@@ -82,7 +82,7 @@ namespace InetBot.Data
 
                     Random rn = new Random();
                     string filename = matchList.ElementAt(rn.Next(0, matchList.Count)).Groups["name"].Value;
-                    
+
                     return filename;
                 }
             }
@@ -109,5 +109,63 @@ namespace InetBot.Data
                 }
             }
         }
+    }
+
+    public class No
+    {
+        public string reason;
+
+
+        public static No GetRandomNo()
+        {
+            HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            using (HttpResponseMessage response = client.GetAsync("https://naas.isalman.dev/no").Result)
+            {
+                using (Stream stream = response.Content.ReadAsStream())
+                {
+                    StreamReader reader = new StreamReader(stream, true);
+                    String responseString = reader.ReadToEnd();
+                    No no = JsonConvert.DeserializeObject<No>(responseString);
+
+                    return no;
+                }
+            }
+        }
+    }
+
+    public class ENERGY()
+    {
+        public string Today;
+        public string Power;
+    }
+
+    public class StatusSNS()
+    {
+        public ENERGY ENERGY;
+    }
+
+    public class PowerUsage
+    {
+        public StatusSNS StatusSNS;
+
+        public static PowerUsage GetPowerUsage()
+        {
+            HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            using (HttpResponseMessage response = client.GetAsync("http://10.0.0.33/cm?cmnd=Status+10").Result)
+            {
+                using (Stream stream = response.Content.ReadAsStream())
+                {
+                    StreamReader reader = new StreamReader(stream, true);
+                    String responseString = reader.ReadToEnd();
+                    PowerUsage powerUsage = JsonConvert.DeserializeObject<PowerUsage>(responseString);
+
+                    
+                    return powerUsage;
+                }
+            }
+        }
+
     }
 }

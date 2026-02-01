@@ -5,6 +5,7 @@ using InetBot.Data;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace InetBot.Modules
 {
@@ -34,7 +35,9 @@ namespace InetBot.Modules
 
             if (message.Content.ToLower() == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
 
-            if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
+            if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*6\\s*7\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
+            if (Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*69\\s*(?!\\w)") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*420\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("nice");
+
 
             //initialize a list of modmails and punishments for use across the class
             ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
@@ -289,6 +292,8 @@ namespace InetBot.Modules
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
                 .WithTitle($"New message!")
                 .WithDescription($"{sourceMessage.Content}");
+
+            if (sourceMessage.Attachments.Count > 0) msgEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
 
             await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
 
@@ -591,12 +596,21 @@ namespace InetBot.Modules
                 roleList = "User not in server!";
             }
 
+            //EmbedBuilder openEmbedBuilder = new EmbedBuilder()
+            //    .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+            //    .WithTitle($"New Modmail!")
+            //    .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`! This ticket has been created in response to a punishment:")
+            //    .AddField($"{emote} {typeText}", $":hash: **#{ticket.ticketID}**\n:clock8: <t:{punishment.timestamp}:f>\n:dart: <@{punishment.targetID}>\n:cop: <@{punishment.modID}>\n** Reason**:\n`{punishment.reason}`", true)
+            //    .AddField($":nerd: Author", $":cake: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:trumpet: <t:{joinedat}:f>\n:crossed_swords: {roleList}", true)
+            //    .WithColor(Color.Green)
+            //    .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
+            //    .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
+
             EmbedBuilder openEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
                 .WithTitle($"New Modmail!")
-                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`! This ticket has been created in response to a punishment:")
-                .AddField($"{emote} {typeText}", $":hash: **#{ticket.ticketID}**\n:clock8: <t:{punishment.timestamp}:f>\n:dart: <@{punishment.targetID}>\n:cop: <@{punishment.modID}>\n** Reason**:\n`{punishment.reason}`", true)
-                .AddField($":nerd: Author", $":cake: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:trumpet: <t:{joinedat}:f>\n:crossed_swords: {roleList}", true)
+                .WithDescription($"A new ModMail with ID {ticket.ticketID} has been opened with reason `{mailMessage.content}`!")
+                .AddField($":nerd: Author", $":cake: <t:{sourceMessage.Author.CreatedAt.ToUnixTimeSeconds()}:f>\n:trumpet: <t:{sourceGuild.GetUser(sourceMessage.Author.Id).JoinedAt.Value.ToUnixTimeSeconds()}:f>\n:crossed_swords: {roleList}")
                 .WithColor(Color.Green)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
@@ -609,6 +623,8 @@ namespace InetBot.Modules
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
                 .WithTitle($"New message!")
                 .WithDescription($"{sourceMessage.Content}");
+
+            if (sourceMessage.Attachments.Count > 0) msgEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
 
             await ticketChannel.SendMessageAsync(embed: msgEmbedBuilder.Build());
 
