@@ -3,7 +3,6 @@ using Discord.Audio;
 using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
-using Google.Apis.Forms.v1.Data;
 using InetBot.Data;
 using InetBot.Modules;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +10,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -31,10 +31,12 @@ namespace InetBot
         //we pass these to other methods
         private SocketGuild _guild;
 
+        Commands commands = new();
+
         //3ds
-        private ulong _guildId = 248504507430993921;
+        private static ulong _guildId = 248504507430993921;
         //tsd
-        //private ulong _guildId = 421017607710441492;
+        //private static ulong _guildId = 421017607710441492;
 
         private static System.Timers.Timer activityTimer = new();
         private int _activityCount = 0;
@@ -64,6 +66,7 @@ namespace InetBot
             _client.AutoModActionExecuted += AutoModActionExecuted;
 
             _client.SlashCommandExecuted += SlashCommandHandler;
+            _client.ModalSubmitted += ModalSubmittedHandler;
             _client.ButtonExecuted += ButtonHandler;
             _client.ReactionAdded += ReactionHandler;
             _client.UserJoined += JoinHandler;
@@ -79,10 +82,10 @@ namespace InetBot
 
         private async Task AutoModActionExecuted(SocketGuild guild, AutoModRuleAction action, AutoModActionExecutedData data)
         {
-            Commands commands = new Commands();
             commands._user = _client.CurrentUser;
             commands.isSlashCommand = false;
             commands._modChannel = guild.GetTextChannel(commands.modChannelID);
+            commands._message = null;
 
             if (data.AlertMessageId != 0) return;
 
@@ -126,7 +129,6 @@ namespace InetBot
 
         private async Task AuditLogCreated(SocketAuditLogEntry logEntry, SocketGuild guild)
         {
-            Commands commands = new Commands();
             //await commands.HandleAuditLog(logEntry, guild, _client);
         }
 
@@ -174,6 +176,63 @@ namespace InetBot
             }
         }
 
+        private static void httpListen()
+        {
+            HttpListener listener = new HttpListener();
+
+            //listener.Prefixes.Add("http://ddns.vendell.online:46673/inetappeals/");
+            //listener.Prefixes.Add("http://localhost:46673/");
+            listener.Prefixes.Add("http://*:46673/inetappeals/");
+            listener.Prefixes.Add("http://*:46673/");
+            listener.Start();
+
+            while (true)
+            {
+                HttpListenerContext context = listener.GetContext();
+                HttpListenerRequest request = context.Request;
+
+                FormResponse response;
+
+                Console.WriteLine($"Recived request for {request.Url} from {request.RemoteEndPoint} with User-Agent {request.UserAgent}");
+
+                if (context.Request.UserAgent.Contains("Google-Apps-Script") && context.Request.Url.ToString().Contains("inetappeals"))
+                {
+                    string documentContents;
+                    using (Stream receiveStream = request.InputStream)
+                    {
+                        using (StreamReader readStream = new StreamReader(receiveStream, Encoding.UTF8))
+                        {
+                            JsonSerializer serializer = new JsonSerializer();
+                            response = (FormResponse)serializer.Deserialize(readStream, typeof(FormResponse));
+                        }
+                    }
+
+
+                    BanAppeals banAppeals = new();
+                    Commands appealCommands = new Commands();
+                    SocketGuild appealGuild = _client.GetGuild(_guildId);
+                    banAppeals.HandleAppeal(appealCommands, appealGuild, response);
+
+                    context.Response.Headers.Clear();
+                    context.Response.SendChunked = false;
+                    context.Response.StatusCode = 200;
+                    context.Response.Headers.Add("Server", String.Empty);
+                    context.Response.Headers.Add("Date", String.Empty);
+                    context.Response.Close();
+                }
+                else
+                {
+                    context.Response.Headers.Clear();
+                    context.Response.SendChunked = false;
+                    context.Response.StatusCode = 418;
+                    context.Response.Headers.Add("Server", String.Empty);
+                    context.Response.Headers.Add("Date", String.Empty);
+                    context.Response.Close();
+                }
+
+            }
+        }
+
         private static void tcpListen()
         {
             int port = 46672;
@@ -199,12 +258,10 @@ namespace InetBot
             activityTimer.AutoReset = true;
             activityTimer.Enabled = true;
 
-            BanAppeals appeals = new BanAppeals();
-            //appeals.CheckAppeals();
-            //appealTimer.Elapsed += appeals.CheckAppeals;
-
-            Thread thread = new Thread(new ThreadStart(tcpListen));
-            thread.Start();
+            Thread tcpListenThread = new Thread(new ThreadStart(tcpListen));
+            Thread httpListenThread = new Thread(new ThreadStart(httpListen));
+            tcpListenThread.Start();
+            httpListenThread.Start();
 
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
@@ -360,6 +417,18 @@ namespace InetBot
             .WithDescription("Deny a staff application.")
             .AddOption("user", ApplicationCommandOptionType.String, "The users ID.", isRequired: true);
 
+            var matchCommand = new SlashCommandBuilder()
+            .WithName("match")
+            .WithDescription("Start a game match.")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .WithName("mk7")
+                .WithDescription("Start or finish a Mario Kart 7 match."))
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .WithName("leaderboard")
+                .WithDescription("Get the game leaderboards."));
+
             var helpCommand = new SlashCommandBuilder()
             .WithName("help")
             .WithDescription("Shows a help message.");
@@ -387,6 +456,8 @@ namespace InetBot
 
                 //await _guild.CreateApplicationCommandAsync(acceptCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(denyCommand.Build());
+
+                //await _guild.CreateApplicationCommandAsync(matchCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(helpCommand.Build());
 
@@ -441,7 +512,6 @@ namespace InetBot
         {
             ModMail modMail = new();
             //TextCommands textCommands = new();
-            Commands commands = new Commands();
 
             //if (message.Channel.Id == 259878856507392001 && message.Author.Id == 271382258525405184 && message.Embeds.FirstOrDefault().Author.Value.Name.Contains("Inet-kun"))
             //{
@@ -484,12 +554,33 @@ namespace InetBot
             {
                 await buttons.HandlePunishmentShareButton(component);
             }
+            else if (customId.Contains("stop-button") && !customId.Contains("finish"))
+            {
+                await commands.gamerBoard.SetScoresModal(component, _guild);
+            }
+            else if(customId.Contains("finish"))
+            {
+                await commands.gamerBoard.FinishMatch(component, _guild);
+            }
         }
 
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
-            Commands commands = new();
             await commands.HandleCommand(command, _guild, _client);
+        }
+
+        private async Task ModalSubmittedHandler(SocketModal modal)
+        {
+            await modal.DeferAsync();
+
+            if (modal.Data.CustomId.Contains("start"))
+            {
+                await commands.gamerBoard.StartMatch(modal, _guild);
+            }
+            else if (modal.Data.CustomId.Contains("setscores"))
+            {
+                await commands.gamerBoard.SetScores(modal, _guild);
+            }
         }
 
         private Task Log(LogMessage message)

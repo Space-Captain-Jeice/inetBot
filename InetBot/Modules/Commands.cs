@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Net;
+using Discord.Rest;
 using Discord.WebSocket;
 using FuzzySharp;
 using FuzzySharp.Extractor;
@@ -35,8 +36,13 @@ namespace InetBot.Modules
         public bool isSlashCommand = false;
         bool userHasPerms = false;
 
+        public GamerBoard gamerBoard = new GamerBoard();
+        bool matchInProgress = false;
+
         SocketSlashCommand _command;
-        SocketMessage _message;
+        public SocketMessage _message;
+
+        IUserMessage[] lastPingMessage = new IUserMessage[6];
 
         public SocketUser _user;
         SocketUserMessage _userMessage;
@@ -46,7 +52,7 @@ namespace InetBot.Modules
         string valueID = "";
 
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
-        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb", "balance", "no", "leaderboard"];
+        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb", "balance", "no", "leaderboard", "lfg", "match"];
         public SocketTextChannel _modChannel;
         
         //3ds:
@@ -59,8 +65,12 @@ namespace InetBot.Modules
         //     Handle a SocketSlashCommand.
         public async Task HandleCommand(SocketSlashCommand command, SocketGuild guild, DiscordSocketClient client)
         {
-            if (!modCommands.Any(command.CommandName.Contains)) await command.DeferAsync(false);
-            else await command.DeferAsync(true);
+            if (!command.CommandName.Contains("match"))
+            {
+                if (!modCommands.Any(command.CommandName.Contains)) await command.DeferAsync(false);
+                else await command.DeferAsync(true);
+            }
+
             
             _command = command;
             _user = command.User;
@@ -179,6 +189,10 @@ namespace InetBot.Modules
                 case "accept":
                     id = ulong.Parse(command.Data.Options.First().Value.ToString());
                     await HandleAcceptCommand(id, guild);
+                    break;
+                case "match":
+                    string game = command.Data.Options.First().Name;
+                    await HandleMatchCommand(game, guild);
                     break;
                 case "help":
                     guildUser = command.User as SocketGuildUser;
@@ -738,6 +752,20 @@ namespace InetBot.Modules
                     case "idiot":
                         await HandleIdiotCommand();
                         break;
+                    case "lfg":
+                        string game = "";
+
+                        try
+                        {
+                            game = message.Content.ToLower().Split(" ")[1];
+                        }
+                        catch (IndexOutOfRangeException e)
+                        {
+                            game = "cooldowns";
+                        }
+
+                        await HandleLFGCommand(game);
+                        break;
                     case "8ball":
                         await Handle8BallCommand();
                         break;
@@ -836,6 +864,22 @@ namespace InetBot.Modules
             }
         }
 
+        private async Task HandleMatchCommand(string game, SocketGuild guild)
+        {
+            switch (game)
+            {
+                case "mk7":
+                    if (gamerBoard.gameMatch == null) await gamerBoard.InitMatch(game, _command);
+                    else await gamerBoard.StopMatch(game, _command);
+                    break;
+                case "leaderboard":
+                    await gamerBoard.GetLeaderboards(_command, guild);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         private async Task HandleHelpCommand(SocketGuildUser guildUser)
         {
             if (guildUser.GuildPermissions.KickMembers)
@@ -886,6 +930,8 @@ namespace InetBot.Modules
                 "Provides information about various topics.\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
                 "Gives you information about guides. Optionally points you to guide sections.\n" +
+                "`?match mk7/leaderboard`\n" +
+                "Start a match of Mario Kart 7 or look at the current leaderboard.\n" +
                 "`?rule <1-10>`\n" +
                 "Shows you the specified rule.\n" +
                 "`?ping`\n" +
@@ -3089,6 +3135,111 @@ namespace InetBot.Modules
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
             else await RespondToTextCommand(replyBuilder);
         }
+
+        private async Task HandleLFGCommand(string game)
+        {
+            if (_user == null) return;
+            if (_user.IsBot) return;
+
+            int gameIndex;
+
+            switch (game)
+            {
+                case "pokemon":
+                    gameIndex = 0;
+                    break;
+                case "mk7":
+                case "mariokart":
+                case "mario":
+                    gameIndex = 1;
+                    break;
+                case "smash":
+                    gameIndex = 2;
+                    break;
+                case "luigi":
+                case "luigis":
+                case "luigi's":
+                    gameIndex = 3;
+                    break;
+                case "triforce":
+                case "zelda":
+                    gameIndex = 4;
+                    break;
+                case "animal":
+                    gameIndex = 5;
+                    break;
+                default:
+                    gameIndex = 6;
+                    break;
+            }
+
+            /*
+             * 0 = pokemon
+             * 1 = mk7
+             * 2 = smash
+             * 3 = luigi
+             * 4 = triforce
+             * 5 = animal crossing (queen isabelle my beloved <33 love you bbygurl)
+            */
+
+            ulong[] roleIDs = [756566156126453787, 756566313257664543, 756566455415341199, 1469110894918111394, 1281348039172165768, 1203448083837485066];
+            ulong[] fanaticRoles = [1470172991227691200, 1468863370626334805, 1470173152813383831, 1470173269477822494, 1470173268206948508, 1470173404350120048];
+
+            if (gameIndex == 6)
+            {
+                string responseString = "";
+
+                int itemIndex = 0;
+                foreach (var item in lastPingMessage)
+                {
+                    try
+                    {
+                        var timestamp = lastPingMessage[itemIndex].Timestamp;
+
+                        responseString += $"The last time <@&{roleIDs[itemIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R>.\n";
+                    }
+                    catch (NullReferenceException e)
+                    {
+                        responseString += $"<@&{roleIDs[itemIndex]}> has not been pinged since I have been restarted!\n";
+                    }
+
+                    itemIndex++;
+                }
+
+                EmbedBuilder embedBuilder = new EmbedBuilder()
+                    .WithTitle("Here are all the current cooldowns!")
+                    .WithDescription(responseString)
+                    .WithColor(Color.Orange);
+
+                await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+            }
+
+            if (lastPingMessage[gameIndex] == null)
+            {
+
+                lastPingMessage[gameIndex] = await _userMessage.ReplyAsync($"<@&{roleIDs[gameIndex]}> {_guild.GetUser(_user.Id).DisplayName} wants to play!");
+            }
+            else
+            {
+                var timestamp = lastPingMessage[gameIndex].Timestamp;
+
+
+                if (DateTime.Compare(DateTime.Now.AddDays(-1), timestamp.DateTime) > 0)
+                {
+                    lastPingMessage[gameIndex] = await _userMessage.ReplyAsync($"<@&{roleIDs[gameIndex]}> {_guild.GetUser(_user.Id).DisplayName} wants to play!");
+                }
+                else
+                {
+                    EmbedBuilder embedBuilder = new EmbedBuilder()
+                        .WithTitle("Too soon!")
+                        .WithDescription($"The last time <@&{roleIDs[gameIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R>.\nPlease wait until 24 hours have passed or ping <@&{fanaticRoles[gameIndex]}>.")
+                        .WithColor(Color.Red);
+
+                    await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+                }
+            }
+        }
+
         private async Task Handle8BallCommand()
         {
             string[] responses = ["It is certain", "It is decidedly so", "Without a doubt", "You may rely on it", "As I see it, yes", "Yes definitely", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don’t count on it", "My reply is no", "My sources say no", "Very doubtful", "Outlook not so good"];
@@ -3097,8 +3248,8 @@ namespace InetBot.Modules
             Random rnd = new Random();
             int num = rnd.Next(responses.Length);
 
-            if (num <= 10) color = Color.Green;
-            if (num > 10 && num <= 15) color = Color.Orange;
+            if (num <= 9) color = Color.Green;
+            if (num > 9 && num <= 15) color = Color.Orange;
             if (num > 15) color = Color.Red;
 
 
@@ -3132,7 +3283,7 @@ namespace InetBot.Modules
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"About me!")
                 .WithDescription($"Hey! I'm **Inet-Kun**, a custom bot developed by **Vendell** for the **r/3DS** discord server. Here's a few things about me!\n" +
-                $"I'm written in **C# .NET 8.0** using **Discord.Net v3.18.0**.\n" +
+                $"I'm written in **C# .NET 8.0** using **Discord.Net v3.19.0-beta.1**.\n" +
                 $"Currently running on **{RuntimeInformation.OSDescription}**\n\n" +
                 $":octagonal_sign: Total Punishments: **{punishments.punishmentIndex}**\n" +
                 $":envelope: Total Modmails: **{modmails.modmailIndex}**\n" +
@@ -3140,7 +3291,7 @@ namespace InetBot.Modules
                 $":tools: Built on **{buildTime}**\n" +
                 $":clock1: Process uptime: **{uptime}**\n" +
                 $":zap: Server current power usage: **{PowerUsage.GetPowerUsage().StatusSNS.ENERGY.Power}W**\n" +
-                $":page_facing_up: Lines of code: **~5000**")
+                $":page_facing_up: Lines of code: **~5500**")
                 .WithFooter("Thank you for using! <3");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);

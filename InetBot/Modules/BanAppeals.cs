@@ -1,44 +1,30 @@
-﻿using System;
+﻿using Discord;
+using Discord.WebSocket;
+using InetBot.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Timers;
-using Google.Apis;
-using Google.Apis.Services;
-using Google.Apis.Forms.v1;
-using Google.Apis.Discovery.v1;
-using Google.Apis.Discovery.v1.Data;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Util.Store;
 
 namespace InetBot.Modules
 {
     internal class BanAppeals
     {
-        public async void CheckAppeals()
+        public async Task HandleAppeal(Commands commands, SocketGuild guild, FormResponse formResponse)
         {
-            UserCredential credential;
-            using (var stream = new FileStream("client_secrets.json", FileMode.Open, FileAccess.Read))
-            {
-                credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    GoogleClientSecrets.Load(stream).Secrets,
-                    new[] { FormsService.Scope.FormsResponsesReadonly },
-                    "user", CancellationToken.None, new FileDataStore("Forms.Responses"));
-            }
+            EmbedBuilder appealBuilder = new EmbedBuilder()
+                .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
+                .WithTitle("New ban appeal!")
+                .WithDescription($"**Username:** {formResponse.username}\n" +
+                $"**Punishment ID:** {formResponse.id}\n" +
+                $"**Ban Reason:** {formResponse.reasonBan}\n" +
+                $"**Unban Reason:** {formResponse.reasonUnban} \n" +
+                $"**e-Mail Address:** {formResponse.email} \n")
+                .WithFooter("Discuss!")
+                .WithColor(Color.Gold);
 
-            var service = new FormsService(new BaseClientService.Initializer
-            {
-                ApplicationName = "InetBot Appeals",
-                HttpClientInitializer = credential,
-            });
-
-            var result = await service.Forms.Responses.List("1y6uhubP6qf_4PqESykefnSFNjfLvB7uGscdMAgiq3-M").ExecuteAsync();
-
-            foreach (var item in result.Responses)
-            {
-                Console.WriteLine(item.Answers.Last().Value.TextAnswers.Answers.First().Value);
-            }
+            await guild.GetTextChannel(248509081789136896).SendMessageAsync(embed: appealBuilder.Build());
         }
     }
 }
