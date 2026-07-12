@@ -251,7 +251,29 @@ namespace InetBot
         private async Task Client_Ready()
         {
             _guild = _client.GetGuild(_guildId);
-            //await _guild.GetTextChannel(259887245324976148).GetMessageAsync(1358429192265535740).Result.Author.SendMessageAsync("hi :)\ndid you mean to message the moderators?");
+            EmbedBuilder embedBuilder = new EmbedBuilder()
+                .WithTitle("ModMail Commands")
+                .WithDescription("`=<message>`\n" +
+                "'=[Good evening.](https://www.youtube.com/watch?v=V_tbuIlRQpw)'\n" +
+                "Replies to a message.\n\n" +
+                "`=close <reason>`\n" +
+                "'=close You aint getting unmuted.'\n" +
+                "Closes a ticket. Reason required.\n\n" +
+                "`=qclose`\n" +
+                "'=qclose This guy is insane.'\n" +
+                "Closes a ticket without notifying the user.\n\n" +
+                "`=reopen`\n" +
+                "'=reopen' (duh)\n" +
+                "Reopens a closed ticket.\n\n" +
+                "`$<message>`\n" +
+                "'$Yeah, we are literally worse than hitler.'\n" +
+                "Replies to a message anonymously.\n\n" +
+                "`$close <reason>`\n" +
+                "'$close Leave and never come back.'\n" +
+                "Closes a ticket anonymously.\n\n")
+                .WithFooter("Don't say any of this to people...")
+                .WithColor(Color.Teal);
+            //await _guild.GetTextChannel(1141532799912923216).SendMessageAsync(embed: embedBuilder.Build());
 
             activityTimer.Interval = 30000;
             activityTimer.Elapsed += SetActivity;
@@ -261,7 +283,7 @@ namespace InetBot
             Thread tcpListenThread = new Thread(new ThreadStart(tcpListen));
             Thread httpListenThread = new Thread(new ThreadStart(httpListen));
             tcpListenThread.Start();
-            httpListenThread.Start();
+            //httpListenThread.Start();
 
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
@@ -308,6 +330,13 @@ namespace InetBot
             .WithDescription("Bans user.")
             .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to ban", isRequired: true)
             .AddOption("reason", ApplicationCommandOptionType.String, "The reason for the ban", isRequired: true);
+
+            var beanCommand = new SlashCommandBuilder()
+             .WithName("bean")
+             .WithDefaultMemberPermissions(GuildPermission.BanMembers)
+             .WithDescription("Beans user.")
+             .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to bean", isRequired: true)
+             .AddOption("reason", ApplicationCommandOptionType.String, "The reason for the bean", isRequired: true);
 
             var unbanCommand = new SlashCommandBuilder()
             .WithName("unban")
@@ -441,6 +470,7 @@ namespace InetBot
                 //await _guild.CreateApplicationCommandAsync(unkickCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(banCommand.Build());
+                //await _guild.CreateApplicationCommandAsync(beanCommand.Build());
                 //await _guild.CreateApplicationCommandAsync(unbanCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(warnCommand.Build());

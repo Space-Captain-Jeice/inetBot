@@ -21,8 +21,10 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Xml;
 using static InetBot.Data.User;
 using static System.Collections.Specialized.BitVector32;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace InetBot.Modules
@@ -53,6 +55,8 @@ namespace InetBot.Modules
 
         string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
         string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb", "balance", "no", "leaderboard", "lfg", "match"];
+        string[] infoCommands = ["format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "3ds", "n3ds"];
+
         public SocketTextChannel _modChannel;
         
         //3ds:
@@ -70,8 +74,11 @@ namespace InetBot.Modules
                 if (!modCommands.Any(command.CommandName.Contains)) await command.DeferAsync(false);
                 else await command.DeferAsync(true);
             }
+            if (gamerBoard.gameMatch != null)
+            {
+                await command.DeferAsync(false);
+            }
 
-            
             _command = command;
             _user = command.User;
 
@@ -211,6 +218,8 @@ namespace InetBot.Modules
             _userMessage = message as SocketUserMessage;
             _guild = guild;
 
+            isSlashCommand = false;
+
             string msg = message.Content.Remove(0, 1);
             string cmd = msg.Split(" ")[0].ToLower();
 
@@ -253,9 +262,23 @@ namespace InetBot.Modules
 
             if (char.IsLetterOrDigit(cmd[0]))
             {
+                //if (infoCommands.Any(cmd.Equals))
+                //{
+                //    Console.WriteLine("weowowo");
+                //    EmbedBuilder nohelpBuilder = new EmbedBuilder()
+                //        .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
+                //        .WithTitle("__No permission!__")
+                //        .WithDescription($"You do not have access to the command `?{cmd}` because you are nohelped.")
+                //        .WithColor(Color.Red);
+
+                //    await _userMessage.ReplyAsync(embed: nohelpBuilder.Build());
+                //    return;
+                //}
+
                 switch (cmd)
                 {
                     case "ban":
+                    case "bean":
                         if (!guildUser1.GuildPermissions.BanMembers)
                         {
                             await _userMessage.ReplyAsync(embed: noPermissionBuilder.Build());
@@ -649,7 +672,15 @@ namespace InetBot.Modules
                     case "rule":
                     case "rules":
                         long bet = 0;
-                        int rule = int.Parse(message.Content.Split(" ")[1]);
+                        int rule = 1000;
+                        try
+                        {
+                            rule = int.Parse(message.Content.Split(" ")[1]);
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
                         try
                         {
                             bet = long.Parse(message.Content.Split(" ")[2]);
@@ -735,6 +766,140 @@ namespace InetBot.Modules
                         break;
                     case "n2dsxl":
                         await HandleN2DSXLCommand();
+                        break;
+                    case "n2dsxlbutgood":
+                        await HandleN2DSXLButGoodCommand();
+                        break;
+                    case "cleaninty":
+                    case "soap":
+                        await HandleCleanintyCommand();
+                        break;
+                    case "soapbutgood":
+                        await HandleSoapButGoodCommand();
+                        break;
+                    case "soapbutbad":
+                        await HandleSoapButBadCommand();
+                        break;
+                    case "mkey":
+                        await HandleMkeyCommand();
+                        break;
+                    case "hardwaretest":
+                    case "hwt":
+                        await HandleHwtCommand();
+                        break;
+                    case "dump":
+                    case "dumping":
+                        await HandleDumpingCommand();
+                        break;
+                    case "finalizing":
+                    case "finalising":
+                    case "finalize":
+                    case "finalise":
+                        await HandleFinalizingCommand();
+                        break;
+                    case "corrupt":
+                    case "corrupted":
+                    case "fixer":
+                    case "fcg":
+                        await HandleCorruptCommand();
+                        break;
+                    case "bsu":
+                        await HandleBlackScreenCommand();
+                        break;
+                    case "dsmu":
+                        await HandleDSModeUnbrickCommand();
+                        break;
+                    case "restore":
+                    case "restoring":
+                    case "update":
+                    case "updating":
+                        await HandleRestoreUpdateCommand();
+                        break;
+                    case "luma":
+                        await HandleLumaCommand();
+                        break;
+                    case "models":
+                        await HandleModelsCommand();
+                        break;
+                    case "ctrtransfer":
+                        await HandleCtrTransferCommand();
+                        break;
+                    case "movable":
+                        await HandleMovableCommand();
+                        break;
+                    case "missing":
+                        await HandleMissingTitlesCommand();
+                        break;
+                    case "titlefixer":
+                        await HandleTitleFixerCommand();
+                        break;
+                    case "ctrcheck":
+                        await HandleCTRCheckCommand();
+                        break;
+                    case "things":
+                        await HandleThingsCommand();
+                        break;
+                    case "mid0":
+                        await HandleMultipleID0Command();
+                        break;
+                    case "mid1":
+                        await HandleMultipleID1Command();
+                        break;
+                    case "integrity":
+                    case "checksd":
+                    case "fakesd":
+                        await HandleIntegrityCommand();
+                        break;
+                    case "ntrboot":
+                        await HandleNTRBootCommand();
+                        break;
+                    case "uninstall":
+                        await HandleUninstallCommand();
+                        break;
+                    case "ftp":
+                        await HandleFTPCommand();
+                        break;
+                    case "essentials":
+                    case "idk":
+                        await HandleEssentialsCommand();
+                        break;
+                    case "backup":
+                        await HandleBackupCommand();
+                        break;
+                    case "nnid":
+                    case "nnidunlink":
+                    case "unlinknnid":
+                    case "nnidont":
+                        await HandleNNIDCommand();
+                        break;
+                    case "locale":
+                    case "extendedlocale":
+                        await HandleLocaleCommand();
+                        break;
+                    case "faketik":
+                        await HandleFaketikCommand();
+                        break;
+                    case "atob":
+                        await HandleA9LHCommand();
+                        break;
+                    case "ltob":
+                        await HandleLumatoB9SCommand();
+                        break;
+                    case "b9s":
+                        await HandleUpdatingB9SCommand();
+                        break;
+                    case "stealthluma":
+                    case "stealth":
+                        await HandleStealthLumaCommand();
+                        break;
+                    case "3dsbank":
+                        await Handle3DSBankCommand();
+                        break;
+                    case "links":
+                        await HandleLinksCommand();
+                        break;
+                    case "discord":
+                        await HandleDiscordCommand();
                         break;
                     case "cat":
                         await HandleCatCommand();
@@ -918,24 +1083,30 @@ namespace InetBot.Modules
                 if (isSlashCommand) await RespondToSlashCommand(modReplyBuilder);
                 else await RespondToTextCommand(modReplyBuilder);
             }
-            
+
             var userReplyBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("Inet-Kun User Help")
                 .WithDescription("**Inet is your Fun and Modmail bot for the r/3DS Discord!**\n" +
                 "Here is an overview of the commands with examples!\n\n" +
                 "`?otter/dog/cat/bird`\n" + 
-                "Gets a random image of your favourite critter.\n" +
-                "`?format/sd <transfer>/piracy/panel/citra/n3ds/n2dsxl`\n" +
-                "Provides information about various topics.\n" +
+                "Gets a random image of your favourite critter.\n\n" +
+                "`?format/piracy/panel/citra/n3ds/n2dsxl`\n" +
+                "Provides information about various topics.\n\n" +
+                "`?sd <transfer>`\n" +
+                "Gives you information about SD cards and optionally how to transfer your data to a new card.\n\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
-                "Gives you information about guides. Optionally points you to guide sections.\n" +
-                "`?match mk7/leaderboard`\n" +
-                "Start a match of Mario Kart 7 or look at the current leaderboard.\n" +
+                "Gives you information about guides. Optionally points you to guide sections.\n\n" +
+                "`?links`\n" +
+                "Gives you a list of useful links.\n\n" +
+                "`?lfg pokemon/mk7/smash/luigi/triforce/animal crossing`\n" +
+                "Ping the role for each game with a 24 hour cooldown.\n\n" +
+                "`/match mk7/leaderboard`\n" +
+                "Start a match of Mario Kart 7 or look at the current leaderboard.(Slash only)\n\n" +
                 "`?rule <1-10>`\n" +
-                "Shows you the specified rule.\n" +
+                "Shows you the specified rule.\n\n" +
                 "`?ping`\n" +
-                "Get the bots ping to discord.\n" +
+                "Get the bots ping to discord.\n\n" +
                 "`?about`\n" +
                 "Shows some information about the bot.");
 
@@ -1117,8 +1288,24 @@ namespace InetBot.Modules
                     color = Color.Blue;
                     url = "https://www.ivelvalleybirdfood.co.uk/media/blog/blog-cover-Bird-Guide-British-Tit-Family.webp";
                     break;
+                case 1000:
+                    title = "**Rules of the r/3DS Discord server**";
+                    description = "Rule 1: Be kind\n" +
+                        "Rule 2: No Spamming\n" +
+                        "Rule 3: No Trading\n" +
+                        "Rule 4: SFW only\n" +
+                        "Rule 5: No self-promotion\n" +
+                        "Rule 6: No Spoliers\n" +
+                        "Rule 7: No piracy\n" +
+                        "Rule 8: Stay on topic\n" +
+                        "Rule 9: Keep it to english\n" +
+                        "Rule 10: Obey the mods\n" +
+                        "Rule 11: Have fun!\n\n" +
+                        "By joining and participating in the server you agree to oblige to all the above rules.";
+                    break;
                 default:
-                    title = "";
+                    title = "Rule does not exist";
+                    description = "Please find a rule that does.";
                     break;
             }
 
@@ -1531,7 +1718,8 @@ namespace InetBot.Modules
                 .WithDescription($"You have been banned for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "BAN", true)
-                .AddField("Note", "If you disagree with the action taken, please visit [this link](https://forms.gle/CMm8jPAxQCSoGYVY8)", false)
+                .AddField("Note", "If you disagree with the action taken, please visit [this link](https://forms.gle/CMm8jPAxQCSoGYVY8)\n" +
+                "The Google Form above is the **ONLY** way to appeal. We will **NEVER** direct message you about any actions taken.", false)
                 .WithColor(Color.LightOrange)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
@@ -2947,10 +3135,9 @@ namespace InetBot.Modules
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About Citra and emulation")
                 .WithDescription("Since the lawsuit against Citra developers, Nintendo has been attacking communities providing support for Citra and other 3DS emulators.\n\n" +
-                "We will **not help you with emulating the 3DS** on other devices, we only support hacking actual 3DS systems.\n");
+                "We will not help you with emulating the 3DS on other devices, with the exception of **Azahar**.\n");
 
             await RespondToInfoCommand(replyBuilder);
-
         }
 
         private async Task HandleGuideCommand(string section)
@@ -3069,7 +3256,6 @@ namespace InetBot.Modules
                 "- High price despite being a budget console\n" +
                 "- Lower battery capacity (1300mAh vs 1750mAh)\n" +
                 "- LCD light bleeds through the shell on orange and white models\n" +
-                "- Backplate uses tri-point screws despite all other models using #00 JIS\n" +
                 "- Speakers placed where your hand goes\n" +
                 "- Matte finish is prone to scratching\n" +
                 "- Tiny stylus\n" +
@@ -3079,6 +3265,403 @@ namespace InetBot.Modules
 
             await RespondToInfoCommand(replyBuilder);
         }
+
+        private async Task HandleN2DSXLButGoodCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About the New 2DS XL")
+                .WithDescription("the n2dsxl fucking sucks throw yours away set it on fire and shove it u-")
+                .WithFooter("This message was brought you by: spacecaptainjeice");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleCleanintyCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About soap/cleaninty")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Cleaninty");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+       
+        private async Task HandleSoapButGoodCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing a soap transfer")
+                .WithDescription("**Step 1**: Pick up a bar of soap (liquid soap may work but ymmv)\n" +
+                "**Step 2**: Put the soap in your other hand\n\n" +
+                "Congratulations! You did a soap transfer.");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleSoapButBadCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing a soap transfer")
+                .WithDescription("**Step 1**: Pick up a bar of soap (liquid soap may work but ymmv)\n" +
+                "**Step 2**: Oh no! You dropped the soap.\n\n" +
+                "Watch your back!");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleMkeyCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About mkey")
+                .WithDescription("Use mkey to unlock parental controls on your device:\n" +
+                "https://mkey.nintendohomebrew.com/");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleHwtCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Hardware Test")
+                .WithDescription("Hardware Test is a piece of software that lets you test the hardware in your console:\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Hardware_test");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleDumpingCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Dumping")
+                .WithDescription("Make a backup of your digital or cartridge games using this guide:\n" +
+                "https://3ds.hacks.guide/dumping-titles-and-game-cartridges.html");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleFinalizingCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("Finalizing Setup")
+                .WithDescription("https://3ds.hacks.guide/finalizing-setup.html");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+        private async Task HandleCorruptCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About fixing corrupted games")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Fixing_corrupted_games");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleBlackScreenCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About BSU")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Black_screen_unbrick");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+        private async Task HandleDSModeUnbrickCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About DSMU")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:DS_mode_unbrick");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleRestoreUpdateCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Restoring/Updating CFW")
+                .WithDescription("https://3ds.hacks.guide/restoring-updating-cfw.html");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleLumaCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Luma")
+                .WithDescription("https://github.com/LumaTeam/Luma3DS/releases/latest\n" +
+                "https://github.com/LumaTeam/Luma3DS/releases/tag/v7.0.5");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleModelsCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About 3DS Models")
+                .WithDescription("https://reddit.com/r/3DS/w/3DSvsxl");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleCtrTransferCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing a CTR transfer")
+                .WithDescription("https://3ds.hacks.guide/ctrtransfer.html\nhttps://wiki.hacks.guide/wiki/3DS:CTRTransfer/Manual");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleMovableCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing a Movable moveover")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Movable_Moveover");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleMissingTitlesCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About fixing missing titles")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Missing_Titles");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleTitleFixerCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About fixing titles")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Gm9-title-fixer");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleCTRCheckCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing a CTRCheck")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Ctrcheck");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleThingsCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About things to do")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Things_to_do");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleMultipleID0Command()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About multiple ID0s")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID0");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleMultipleID1Command()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About multiple ID1s")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID1");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleNTRBootCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About NTRBoot")
+                .WithDescription("https://3ds.hacks.guide/ntrboot.html");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleIntegrityCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About NTRBoot")
+                .WithDescription("https://wiki.hacks.guide/wiki/Checking_SD_card_integrity");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleUninstallCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About uninstalling software")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Uninstalling_software");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleFTPCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About FTP")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:FTP");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleEssentialsCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About dumping essentials")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:3ds_essential_dumper");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleBackupCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About doing backups")
+                .WithDescription("https://3ds.hacks.guide/godmode9-usage.html#creating-a-nand-backup\nhttps://3ds.hacks.guide/godmode9-usage.html#restoring-a-nand-backup");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleNNIDCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About removing an NNID")
+                .WithDescription("https://3ds.hacks.guide/godmode9-usage.html#removing-an-nnid-without-formatting-your-console");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleLocaleCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About setting locales")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\nhttps://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleFaketikCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About faketik")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Faketik");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleA9LHCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About moving from A9LH to B9S")
+                .WithDescription(" https://3ds.hacks.guide/a9lh-to-b9s.html");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleUpdatingB9SCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About updating B9S")
+                .WithDescription("https://3ds.hacks.guide/updating-b9s.html");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleLumatoB9SCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About moving from Luma3DS to B9S")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Luma3DS_to_boot9strap");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleStealthLumaCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About StealthLuma")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Alternate_Exploits/Installing_boot9strap_(Stealth_Luma3DS)");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task Handle3DSBankCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About 3DSBank")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:3DSBank");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+
+        private async Task HandleLinksCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("List of helpful links")
+                .WithDescription("Here is a list of useful links:\n\n" +
+                "`?soap ?cleaninty`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Cleaninty\n\n" +
+                "`?mkey`\n" +
+                "https://mkey.nintendohomebrew.com/\n\n" +
+                "`?hardwaretest ?hwt`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
+                "`?dump ?dumping`\n" +
+                "https://3ds.hacks.guide/dumping-titles-and-game-cartridges.html\n\n" +
+                "`?finalising ?finalise`\n" +
+                "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
+                "`?corrupt ?fixer ?fcg`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Fixing_corrupted_games\n\n" +
+                "`?bsu`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Black_screen_unbrick\n\n" +
+                "`?dsmu`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:DS_mode_unbrick\n\n" +
+                "`?restore ?update`\n" +
+                "https://3ds.hacks.guide/restoring-updating-cfw.html\n\n" +
+                "`?luma`\n" +
+                "https://github.com/LumaTeam/Luma3DS/releases/latest\n" +
+                "https://github.com/LumaTeam/Luma3DS/releases/tag/v7.0.5\n\n" +
+                "`?ctrtransfer`\n" +
+                "https://3ds.hacks.guide/ctrtransfer.html\n\n" +
+                "`?movable`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Movable_Moveover\n\n" +
+                "`?missing`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Missing_Titles\n\n" +
+                "`?titlefixer`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Gm9-title-fixer\n\n" +
+                "`?ctrcheck`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Ctrcheck\n\n" +
+                "`?things`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Things_to_do\n\n" +
+                "`?mid0`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID0\n\n" +
+                "`?mid1`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID1\n\n" +
+                "`?integrity ?checksd ?fakesd`\n" +
+                "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
+                "`?ntrboot`\n" +
+                "https://3ds.hacks.guide/ntrboot.html\n\n" +
+                "`?uninstall`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
+                "`?ftp`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
+                "`?essential`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:3ds_essential_dumper\n\n" +
+                "`?backup`\n" +
+                "https://3ds.hacks.guide/godmode9-usage.html#creating-a-nand-backup\n" +
+                "https://3ds.hacks.guide/godmode9-usage.html#restoring-a-nand-backup\n\n" +
+                "`?nnid ?nnidunlink ?unlinknnid`\n" +
+                "https://3ds.hacks.guide/godmode9-usage.html#removing-an-nnid-without-formatting-your-console\n\n" +
+                "`?locale ?extendedlocale`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting\n\n" +
+                "`?faketik`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Faketik\n\n" +
+                "`?atob`\n" +
+                "https://3ds.hacks.guide/a9lh-to-b9s.html\n\n" +
+                "`?ltob`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Luma3DS_to_boot9strap\n\n" +
+                "`?b9s`\n" +
+                "https://3ds.hacks.guide/updating-b9s.html\n\n" +
+                "`?stealth ?stealthluma`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Alternate_Exploits/Installing_boot9strap_(Stealth_Luma3DS)\n\n" +
+                "`?3dsbank`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:3DSBank\n\n" +
+                "`?links`\n" +
+                "You're looking at it right now dummy.");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleDiscordCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithImageUrl($"https://vendell.online/img/3ds_discord.gif");
+
+            await RespondToInfoCommand(replyBuilder);
+
+        }
+
 
         private async Task HandleCatCommand()
         {
@@ -3196,7 +3779,7 @@ namespace InetBot.Modules
                     {
                         var timestamp = lastPingMessage[itemIndex].Timestamp;
 
-                        responseString += $"The last time <@&{roleIDs[itemIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R>.\n";
+                        responseString += $"The last time <@&{roleIDs[itemIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R> on <t:{timestamp.ToUnixTimeSeconds()}:f>.\n";
                     }
                     catch (NullReferenceException e)
                     {
@@ -3212,6 +3795,8 @@ namespace InetBot.Modules
                     .WithColor(Color.Orange);
 
                 await _userMessage.ReplyAsync(embed: embedBuilder.Build());
+
+                return;
             }
 
             if (lastPingMessage[gameIndex] == null)
@@ -3232,7 +3817,7 @@ namespace InetBot.Modules
                 {
                     EmbedBuilder embedBuilder = new EmbedBuilder()
                         .WithTitle("Too soon!")
-                        .WithDescription($"The last time <@&{roleIDs[gameIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R>.\nPlease wait until 24 hours have passed or ping <@&{fanaticRoles[gameIndex]}>.")
+                        .WithDescription($"The last time <@&{roleIDs[gameIndex]}> was pinged was <t:{timestamp.ToUnixTimeSeconds()}:R> on <t:{timestamp.ToUnixTimeSeconds()}:f>.\nPlease wait until 24 hours have passed or ping <@&{fanaticRoles[gameIndex]}>.")
                         .WithColor(Color.Red);
 
                     await _userMessage.ReplyAsync(embed: embedBuilder.Build());
@@ -3465,11 +4050,11 @@ namespace InetBot.Modules
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\punishments.json"), JsonConvert.SerializeObject(punishments, Formatting.Indented));
+                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\punishments.json"), JsonConvert.SerializeObject(punishments, Newtonsoft.Json.Formatting.Indented));
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                File.WriteAllText("/home/vendell/inet/punishments.json", JsonConvert.SerializeObject(punishments, Formatting.Indented));
+                File.WriteAllText("/home/vendell/inet/punishments.json", JsonConvert.SerializeObject(punishments, Newtonsoft.Json.Formatting.Indented));
             }
         }
 
@@ -3477,11 +4062,11 @@ namespace InetBot.Modules
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\users.json"), JsonConvert.SerializeObject(users, Formatting.Indented));
+                File.WriteAllText(string.Concat(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "\\users.json"), JsonConvert.SerializeObject(users, Newtonsoft.Json.Formatting.Indented));
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                File.WriteAllText("/home/vendell/inet/users.json", JsonConvert.SerializeObject(users, Formatting.Indented));
+                File.WriteAllText("/home/vendell/inet/users.json", JsonConvert.SerializeObject(users, Newtonsoft.Json.Formatting.Indented));
             }
         }
 

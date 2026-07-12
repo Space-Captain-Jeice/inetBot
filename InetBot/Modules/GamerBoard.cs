@@ -128,18 +128,26 @@ namespace InetBot.Modules
                     List<ButtonBuilder> buttons = new();
 
                     string replyString = "";
+                    int i = 0;
 
                     foreach (var item in gameMatch.players)
                     {
+                        if (i == 4)
+                        {
+                            break;
+                        }
+
                         string username = _guild.GetUser(item.userId).Username;
 
                         replyString += $"__{username}__: {item.score}\n";
                         ButtonBuilder buttonBuilder = new ButtonBuilder($"{username}", $"match-mk7-stop-button-{item.userId}");
                         buttons.Add(buttonBuilder);
+
+                        i++;
                     }
 
                     ButtonBuilder finishButtonBuilder = new ButtonBuilder($"Finish", $"match-mk7-stop-button-finish", ButtonStyle.Success);
-                    buttons.Add(finishButtonBuilder);
+                    if (gameMatch.players.Count <= 4) buttons.Add(finishButtonBuilder);
 
                     ActionRowBuilder rowBuilder = new ActionRowBuilder()
                         .AddComponents(buttons.ToArray());
@@ -156,7 +164,45 @@ namespace InetBot.Modules
                         .WithFooter("Please answer truthfully.")
                         .WithColor(Color.Orange);
 
-                    await command.RespondAsync(embed: stoppingBuilder.Build(), components: builder.Build());
+                    await command.FollowupAsync(embed: stoppingBuilder.Build(), components: builder.Build());
+
+                    if (i == 4)
+                    {
+                        replyString = "";
+
+                        buttons = new();
+
+                        for (int index = i; i < gameMatch.players.Count; i++)
+                        {
+                            var item = gameMatch.players[i];
+                            string username = _guild.GetUser(item.userId).Username;
+
+                            replyString += $"__{username}__: {item.score}\n";
+                            ButtonBuilder buttonBuilder = new ButtonBuilder($"{username}", $"match-mk7-stop-button-{item.userId}");
+                            buttons.Add(buttonBuilder);
+                        }
+
+                        finishButtonBuilder = new ButtonBuilder($"Finish", $"match-mk7-stop-button-finish", ButtonStyle.Success);
+                        buttons.Add(finishButtonBuilder);
+
+                        rowBuilder = new ActionRowBuilder()
+                            .AddComponents(buttons.ToArray());
+
+                        builder = new ComponentBuilderV2()
+                            .WithActionRow(rowBuilder);
+
+                        stoppingBuilder = new EmbedBuilder()
+                            .WithAuthor($"{command.User.Username}", command.User.GetAvatarUrl() ?? command.User.GetDefaultAvatarUrl())
+                            .WithTitle($"__Stopping MK7 match **#{gameMatch.id}**!__")
+                            .WithDescription($"And they're across the line!\n\n" +
+                            $"Please input each players score by pressing the buttons below:\n" +
+                            $"{replyString}")
+                            .WithFooter("Please answer truthfully.")
+                            .WithColor(Color.Orange);
+
+                        await command.FollowupAsync(embed: stoppingBuilder.Build(), components: builder.Build());
+
+                    }
 
                     break;
                 default:

@@ -34,8 +34,9 @@ namespace InetBot.Modules
             if (message.Author.IsBot) { return; }
 
             if (message.Content.ToLower() == "thanks inet") await message.Channel.SendMessageAsync("you're welcome!");
-
-            if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*6\\s*7\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
+            
+            //if (message.Content.ToLower().Contains("skibidi") || message.Content.ToLower().Contains("sigma") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*6\\s*7\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("https://cdn.discordapp.com/attachments/575033344002359298/1304824028074082325/skibidi.png");
+            
             if (Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*69\\s*(?!\\w)") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*420\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("nice");
 
 
@@ -156,7 +157,25 @@ namespace InetBot.Modules
                                     break;
                             }
                         }
-                        else
+                        else if (message.Content.StartsWith("$"))
+                        {
+                            string msg;
+                            msg = message.Content.Remove(0, 1);
+
+                            string command = msg.Split(" ")[0];
+
+                            switch (command)
+                            {
+                                case "close":
+                                    await CloseModMailAnon(item, msg, false);
+                                    break;
+                                default:
+                                    await AddNewAnonModMessage(item);
+                                    break;
+                            }
+
+                        }
+                        else 
                         {
                             return;
                         }
@@ -416,6 +435,176 @@ namespace InetBot.Modules
                 x.Locked = true;
                 x.Archived = true;
             });
+
+            await SaveModmails();
+        }
+
+        public async Task CloseModMailAnon(ModMailTicket ticket, string msg, bool quiet)
+        {
+            if (msg.Length <= 6)
+            {
+                EmbedBuilder failEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())
+                    .WithTitle("__No reason provided__")
+                    .WithDescription(":prohibited: Please provide a reason!")
+                    .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                    .WithFooter("Closing without a reason is rude.")
+                    .WithColor(Color.Red);
+
+                await sourceMessage.Channel.SendMessageAsync(embed: failEmbedBuilder.Build());
+            }
+
+
+            string reason = msg.Remove(0, 6);
+
+            ticket.isOpen = false;
+            ticket.closingReason = reason;
+            ticket.closingModID = sourceMessage.Author.Id;
+
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = reason
+            };
+
+            //associatedmessages logically cannot be null here
+            ticket.associatedMessages.Add(mailMessage);
+
+            SocketUser user = _client.GetUser(ticket.userID);
+
+            //send the message to the user
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceGuild.Name} [{sourceGuild.Id}]", sourceGuild.IconUrl)
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"Your ModMail ticket has been closed with the reason `{reason}`");
+
+            //send a confirmation message to the modmail thread
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}] (anon)", sourceGuild.IconUrl)
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
+                .WithColor(Color.Green);
+
+
+            //send a confirmation message to the modmail channel
+            EmbedBuilder notifEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}] (anon)", sourceGuild.IconUrl)
+                .WithTitle($"__Ticket Closed!__")
+                .WithDescription($"The ticket #{ticket.ticketID} has been closed with reason `{reason}`.")
+                .WithColor(Color.Red);
+
+            if (quiet) confirmEmbedBuilder.WithDescription($"The ticket #{ticket.ticketID} has been quietly closed with reason `{reason}`.");
+            if (quiet) notifEmbedBuilder.WithDescription($"The ticket #{ticket.ticketID} has been quietly closed with reason `{reason}`.");
+
+            if (!quiet)
+            {
+                try
+                {
+                    await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+                }
+                catch (HttpException e)
+                {
+                    if (e.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                    {
+                        confirmEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                        notifEmbedBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
+                    }
+                }
+                catch (NullReferenceException e)
+                {
+                    if (user == null)
+                    {
+                        confirmEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                        notifEmbedBuilder.AddField("Note!", "User could not be found! They will not receive the notification.");
+                    }
+                    else
+                    {
+                        confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
+                        notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    confirmEmbedBuilder.AddField("Note!", $"Unknown error! {e.Message}");
+                    notifEmbedBuilder.AddField($"Note!", $"Unknown error! {e.Message}");
+                }
+            }
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+
+            ComponentBuilder buttonBuilder = new ComponentBuilder()
+                .WithButton("Jump to thread", null, ButtonStyle.Link, null, $"https://canary.discord.com/channels/{sourceGuild.Id}/{ticket.channelID}");
+
+            await sourceGuild.GetTextChannel(modmailChannelId).SendMessageAsync(embed: notifEmbedBuilder.Build(), components: buttonBuilder.Build());
+
+            await sourceMessage.DeleteAsync();
+
+            await sourceGuild.GetThreadChannel(sourceMessage.Channel.Id).ModifyAsync(x =>
+            {
+                x.Locked = true;
+                x.Archived = true;
+            });
+
+            await SaveModmails();
+        }
+
+
+        public async Task AddNewAnonModMessage(ModMailTicket ticket)
+        {
+            if (!ticket.isOpen)
+            {
+                //send a fail message to the modmail channel
+                EmbedBuilder failEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor($"{sourceGuild.Name} [{sourceGuild.Id}]", sourceGuild.IconUrl)
+                    .WithTitle($"__Ticket Closed__")
+                    .WithDescription($"The ticket you're trying to reply to is already closed.")
+                    .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756404158599210/red.jpg")
+                    .WithFooter("To reopen, send '=reopen'")
+                    .WithColor(Color.Red);
+
+                await sourceMessage.Channel.SendMessageAsync(embed: failEmbedBuilder.Build());
+                return;
+            }
+
+            string message = sourceMessage.Content.Remove(0, 1);
+
+            ModMailMessage mailMessage = new()
+            {
+                authorID = sourceMessage.Author.Id,
+                messageID = sourceMessage.Id,
+                content = message
+            };
+
+            //associatedmessages logically cannot be null here
+            ticket.associatedMessages.Add(mailMessage);
+
+            SocketUser user = _client.GetUser(ticket.userID);
+
+            //send the message to the user
+            EmbedBuilder msgEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceGuild.Name} [{sourceGuild.Id}]", sourceGuild.IconUrl)
+                .WithTitle($"__Message received__")
+                .WithDescription($"{message}");
+
+            if (sourceMessage.Attachments.Count > 0) msgEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
+
+            await user.SendMessageAsync(embed: msgEmbedBuilder.Build());
+
+            //send a confirmation message to the modmail channel
+            EmbedBuilder confirmEmbedBuilder = new EmbedBuilder()
+                .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}] (anon)", sourceGuild.IconUrl)
+                .WithTitle($"__Message sent__")
+                .WithDescription($"{message}")
+                .WithColor(Color.Green);
+
+            if (sourceMessage.Attachments.Count > 0) confirmEmbedBuilder.WithImageUrl(sourceMessage.Attachments.FirstOrDefault().Url);
+
+
+            await sourceMessage.Channel.SendMessageAsync(embed: confirmEmbedBuilder.Build());
+
+            await sourceMessage.DeleteAsync();
 
             await SaveModmails();
         }
