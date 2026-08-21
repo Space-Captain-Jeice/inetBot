@@ -1,30 +1,12 @@
 ﻿using Discord;
 using Discord.Net;
-using Discord.Rest;
 using Discord.WebSocket;
-using FuzzySharp;
-using FuzzySharp.Extractor;
-using FuzzySharp.SimilarityRatio;
 using InetBot.Data;
-using Microsoft.VisualBasic;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Linq;
 using System.Net.NetworkInformation;
-using System.Numerics;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Xml;
 using static InetBot.Data.User;
-using static System.Collections.Specialized.BitVector32;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace InetBot.Modules
@@ -58,7 +40,7 @@ namespace InetBot.Modules
         string[] infoCommands = ["format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "citra", "emulator", "emulation", "3ds", "n3ds"];
 
         public SocketTextChannel _modChannel;
-        
+
         //3ds:
         public ulong modChannelID = 259878856507392001;
         //tsd:
@@ -150,8 +132,9 @@ namespace InetBot.Modules
                     break;
                 case "nohelp":
                     guildUser = (SocketGuildUser)command.Data.Options.First().Value;
+                    reason = (string)command.Data.Options.ElementAt(1);
 
-                    await HandleNohelpCommand(guildUser, guild);
+                    await HandleNohelpCommand(guildUser, guild, reason);
                     break;
                 case "yeshelp":
                     guildUser = (SocketGuildUser)command.Data.Options.First().Value;
@@ -492,8 +475,9 @@ namespace InetBot.Modules
                         }
 
                         guildUser = message.MentionedUsers.First() as SocketGuildUser;
+                        reason = message.Content.Remove(0, 28).Split(" ")[0];
 
-                        await HandleNohelpCommand(guildUser, guild);
+                        await HandleNohelpCommand(guildUser, guild, reason);
                         break;
                     case "yeshelp":
                         if (!guildUser1.GuildPermissions.KickMembers)
@@ -760,7 +744,11 @@ namespace InetBot.Modules
 
                         await HandleGuideCommand(section);
                         break;
-                    case "3ds":
+                    case "model":
+                        string model = "";
+                        if (message.Content.Length > 7) model = message.Content.Remove(0, 7);
+                        await HandleModelCommand(model);
+                        break;
                     case "n3ds":
                         await HandleDiffCommand();
                         break;
@@ -769,6 +757,9 @@ namespace InetBot.Modules
                         break;
                     case "n2dsxlbutgood":
                         await HandleN2DSXLButGoodCommand();
+                        break;
+                    case "2ds":
+                        await Handle2DSCommand();
                         break;
                     case "cleaninty":
                     case "soap":
@@ -825,6 +816,7 @@ namespace InetBot.Modules
                         await HandleCtrTransferCommand();
                         break;
                     case "movable":
+                    case "mm":
                         await HandleMovableCommand();
                         break;
                     case "missing":
@@ -895,6 +887,11 @@ namespace InetBot.Modules
                     case "3dsbank":
                         await Handle3DSBankCommand();
                         break;
+                    case "nh":
+                    case "nintendohomebrew":
+                    case "homebrew":
+                        await HandleNHCommand();
+                        break;
                     case "links":
                         await HandleLinksCommand();
                         break;
@@ -962,7 +959,7 @@ namespace InetBot.Modules
             {
                 if (component == null) await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: true);
                 else await _command.FollowupAsync(embed: embedBuilder.Build(), ephemeral: true, components: component.Build());
-                
+
                 await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
             }
         }
@@ -1007,9 +1004,9 @@ namespace InetBot.Modules
 
                 }
             }
-            else 
-            { 
-                await _modChannel.SendMessageAsync(embed: embedBuilder.Build()); 
+            else
+            {
+                await _modChannel.SendMessageAsync(embed: embedBuilder.Build());
             }
 
         }
@@ -1089,7 +1086,7 @@ namespace InetBot.Modules
                 .WithTitle("Inet-Kun User Help")
                 .WithDescription("**Inet is your Fun and Modmail bot for the r/3DS Discord!**\n" +
                 "Here is an overview of the commands with examples!\n\n" +
-                "`?otter/dog/cat/bird`\n" + 
+                "`?otter/dog/cat/bird`\n" +
                 "Gets a random image of your favourite critter.\n\n" +
                 "`?format/piracy/panel/citra/n3ds/n2dsxl`\n" +
                 "Provides information about various topics.\n\n" +
@@ -1121,7 +1118,7 @@ namespace InetBot.Modules
             Color color = Color.DarkerGrey;
             string url = "";
 
-            string[] strings = {"","","",""};
+            string[] strings = { "", "", "", "" };
 
             bool isNegative = false;
 
@@ -1356,7 +1353,7 @@ namespace InetBot.Modules
                 if (item.Id == _user.Id)
                 {
                     currentUser = item;
-                    userEmbed.Description = $"Coins: **{item.coins:n0}**:coin: ({sortedCoins.IndexOf(item)+1})\n" +
+                    userEmbed.Description = $"Coins: **{item.coins:n0}**:coin: ({sortedCoins.IndexOf(item) + 1})\n" +
                         $"Kappas: **{item.kappas:n0}**<:kappa:267359233618477057> ({sortedKappas.IndexOf(item) + 1})\n" +
                         $"Social Credits: **{item.credits:n0}**<:nookstare:756565740022267946> ({sortedCredits.IndexOf(item) + 1})\n";
                 }
@@ -1380,9 +1377,9 @@ namespace InetBot.Modules
                 .WithColor(Color.Green);
 
             List<User> sortedList = userList.OrderByDescending(x => x.coins).ToList();
-            
+
             string coinlist = "";
-            for (int i = 0; i < 5; i++) coinlist = coinlist + $"**{i+1}) {_guild.GetUser(sortedList.ElementAt(i).Id).Username}**: {sortedList.ElementAt(i).coins:n0}:coin:\n";
+            for (int i = 0; i < 5; i++) coinlist = coinlist + $"**{i + 1}) {_guild.GetUser(sortedList.ElementAt(i).Id).Username}**: {sortedList.ElementAt(i).coins:n0}:coin:\n";
             userEmbed.AddField(":coin: Coins", coinlist + "\n", false);
 
             sortedList = userList.OrderByDescending(x => x.kappas).ToList();
@@ -1431,7 +1428,7 @@ namespace InetBot.Modules
             string[] returns = ["", "", "", "Sorry! You win nothing!"];
             string[] symbols = ["🍒", "<:blue3ds:278714406047711232>", "<:switch:740276984810176614>", "<:mk7:777575859229949962>", "<:white3ds:278714365597974538>", "<:pokeball:756565740106285126>", "<:otterthink:1025026234897420299>", ":lemon:", "<:taiyaki:741002591030476874>"]; //9
             int num1, num2, num3;
-            
+
             Random rand = new Random();
 
             num1 = rand.Next(symbols.Length);
@@ -1649,7 +1646,7 @@ namespace InetBot.Modules
                 }
             }
 
-            if(userIsPoor) returns[3] += $" You didn't have enough money to complete the bet. So the bank gave you a loan. ";
+            if (userIsPoor) returns[3] += $" You didn't have enough money to complete the bet. So the bank gave you a loan. ";
             returns[3] += $" You bet {bet:n0}:coin:";
 
             userExists = false;
@@ -1819,7 +1816,7 @@ namespace InetBot.Modules
                             {
                                 e.Handle((x) =>
                                 {
-                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+                                    if (x is HttpException && ((HttpException)x).DiscordCode == DiscordErrorCode.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds)
                                     {
                                         responseBuilder.AddField("Note!", "I couldn't send the user a DM. They will not receive the notification.");
                                         return true;
@@ -2107,7 +2104,7 @@ namespace InetBot.Modules
                 minutes = splitM[0];
             }
 
-            await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes),0));
+            await guildUser.SetTimeOutAsync(new TimeSpan(int.Parse(days), int.Parse(hours), int.Parse(minutes), 0));
 
             //message duration builder
             string messageDuration = "";
@@ -2179,7 +2176,7 @@ namespace InetBot.Modules
                 return;
             }
             else
-            { 
+            {
                 await guildUser.RemoveTimeOutAsync();
             }
 
@@ -2244,7 +2241,7 @@ namespace InetBot.Modules
             }
         }
 
-        private async Task HandleNohelpCommand(SocketGuildUser guildUser, SocketGuild guild)
+        private async Task HandleNohelpCommand(SocketGuildUser guildUser, SocketGuild guild, string reason)
         {
             //3ds
             ulong roleId = 1394395701076557844;
@@ -2269,7 +2266,7 @@ namespace InetBot.Modules
             var responseBuilder = new EmbedBuilder()
                 .WithAuthor($"{_user.Username} [{_user.Id}]", _user.GetAvatarUrl() ?? _user.GetDefaultAvatarUrl())
                 .WithTitle("__Nohelp applied successfully__")
-                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been nohelped. #{punishment.punishmentID}")
+                .WithDescription($":white_check_mark: `{guildUser.Username}` [{guildUser.Id}] has been nohelped for __{reason}__. #{punishment.punishmentID}")
                 .WithColor(Color.LightOrange)
                 .WithCurrentTimestamp();
 
@@ -2277,10 +2274,10 @@ namespace InetBot.Modules
             var warnBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
                 .WithTitle("**__Ooops...It looks like you have been nohelped.__**")
-                .WithDescription($"You have been nohelped for being disruptive/unhelpful in the support channels.")
+                .WithDescription($"You have been nohelped for __{reason}__.")
                 .AddField("Punishment ID", $"#{punishment.punishmentID}", true)
                 .AddField("Punishent Type", "NOHELP", true)
-                .AddField("Note", "This removes your access to <#269822066474090497> and <#1019955967410065418>. You've been given the role because you've consistently given out advice that is either incorrect or dangerous, and continued to do so after multiple warnings regarding the issue. If you disagree with the action taken, please reply to this message to open a ModMail ticket. ", false)
+                .AddField("Note", "This removes your access to <#269822066474090497> and <#1019955967410065418>. If you disagree with the action taken, please reply to this message to open a ModMail ticket. ", false)
                 .WithColor(Color.LightOrange)
                 .WithImageUrl("https://cdn.discordapp.com/attachments/971110878638407764/1244388234981670995/lightOrange.jpg")
                 .WithFooter("By joining /r/3DS, you agree that you have read our rules and that you will follow them.\r\nHowever, you have not, and this has led to a punishment.");
@@ -2917,7 +2914,7 @@ namespace InetBot.Modules
             var notifBuilder = new EmbedBuilder()
                 .WithAuthor($"{guild.Name} [{guild.Id}]", guild.IconUrl)
                 .WithTitle($"__Your staff application__")
-                .WithDescription($"Hey there! Thanks for applying! Our staff team has reviewed your application"+
+                .WithDescription($"Hey there! Thanks for applying! Our staff team has reviewed your application" +
                 " & have determined that you fit our requirements for **Moderator**" +
                 " *Woohoo!* <:honk:640354545461100606> Below are the next steps of the application process.\n\n" +
                 "You've automatically been assigned the necessary roles to begin your staff training! " +
@@ -2946,8 +2943,8 @@ namespace InetBot.Modules
 
         private async Task HandleSayCommand()
         {
-            if(_user == null) return;
-            if(_user.IsBot) return;
+            if (_user == null) return;
+            if (_user.IsBot) return;
 
             var msg = _message;
 
@@ -3029,7 +3026,7 @@ namespace InetBot.Modules
                 $"For cards __above__ **32GB** use [the guide](https://wiki.hacks.guide/wiki/Formatting_an_SD_card).\n" +
                 $"**64GB** cards need an **Allocation unit size** of __32KB/32768 bytes__,\n **128GB** need __64KB/65536 bytes__.\n" +
                 $"Cards above **128GB** are __not__ recommended because of performance issues.");
-            
+
             await RespondToInfoCommand(replyBuilder);
         }
 
@@ -3234,12 +3231,206 @@ namespace InetBot.Modules
                 .WithTitle("About 'New'3DS vs 'Old'3DS")
                 .WithDescription("A detailed description of all the models can be found in the **[FAQ](https://canary.discord.com/channels/248504507430993921/1270692745056485417/1270702483966005290)**\n\n" +
                 "Briefly explained, the **New 3DS** models have 6 times the CPU power, and double the RAM compared to 'Old' models. New models have **faster game load times**, " +
-                "**face tracking** for a better 3D expirence and some **exclusive games** that use the new models ZL/ZR buttons and the 'C-Stick'. Noteworthy is that the Old 3DS uses **full sized** SD cards while " +
-                "the new models use **microSD** cards.\n" +
-                "You can also customize your New 3DS **non-XL** console with **faceplates** in different designs.");
+                "**face tracking** for a better 3D expirence, some **[exclusive games](https://www.reddit.com/r/3DS/wiki/exclusives)** that use the new models ZL/ZR buttons and the 'C-Stick', and a much more powerful web browser.\n" +
+                "Noteworthy is that the Old 3DS uses **full sized** SD cards while the new models use **microSD** cards.\n" +
+                "You can also customize your New 3DS **non-XL** console with **faceplates** in different designs.\n" +
+                "New models have slightly longer battery life than non-New models.");
 
             await RespondToInfoCommand(replyBuilder);
 
+        }
+
+        private async Task HandleModelCommand(string model)
+        {
+            EmbedBuilder replyBuilder = new();
+
+            switch (model)
+            {
+                case "o3ds":
+                case "3ds":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the Old 3DS")
+                        .WithDescription("__Pros:__\n" +
+                        "- Is the second cheapest 3DS model, and can often be found very cheaply used\n" +
+                        "- Supports the Circle Pad Pro accessory\n" +
+                        "- Has the best pixel density of all the models, along with the 2DS, as it has the smallest screen size and the pixels have not been enlarged\n" +
+                        "- Has the most model colors to choose from\n" +
+                        "- If buying used, the original 3DS model has the highest chance of having an Ambassador Certificate included\n" +
+                        "- Includes stereo speakers\n" +
+                        "- Easy SD card access\n\n" +
+                        "__Neutral:__\n" +
+                        "- Is the smallest 3DS model, which is good for small hands but not for larger hands\n" +
+                        "- Has a metallic, retractable stylus\n" +
+                        "- Has the same battery life as the 3DS XL\n" +
+                        "- Includes a gloss finish as opposed to a matte one; this means the console looks shiny but gets easily marked by fingerprints\n" +
+                        "- Is the lightest 3DS model\n" +
+                        "- Supports as regular sized SD card\n\n" +
+                        "__Cons:__\n" +
+                        "- Includes sharp edges around the console, which can cause discomfort in hands when playing\n" +
+                        "- Some early models had insufficient rubber bumpers, allowing the bottom screen bezel to scratch the top screen when closed\n" +
+                        "- The 3D slider does not lock into the off position\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                case "o3dsxl":
+                case "3dsxl":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the Old 3DS XL")
+                        .WithDescription("__Pros:__\n" +
+                        "- Cheaper than the New 3DS and New 3DS XL\n" +
+                        "- Longer battery life than the Original 3DS\n" +
+                        "- Supports the Circle Pad Pro accessory\n" +
+                        "- The 3D slider locks into the off position\n" +
+                        "- Has the best selection of special editions and accessories in most regions\n" +
+                        "- Includes smoother edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
+                        "- Includes stereo speakers\n" +
+                        "- Easy SD card access\n\n" +
+                        "__Neutral:__\n" +
+                        "- Bigger than the original 3DS, with 90% larger screens; good for big hands but not for smaller hands\n" +
+                        "- Has a large, non-retractable stylus\n" +
+                        "- If buying used, there is a lower chance that an Ambassador Certificate will be included compared to the original 3DS model\n" +
+                        "- Includes a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
+                        "- Is the heaviest 3DS model\n" +
+                        "- Supports as regular sized SD card\n\n" +
+                        "__Cons:__\n" +
+                        "- Quieter speakers than all models except the 2DS\n" +
+                        "- Has the lowest screen brightness of the 3DS models\n" +
+                        "- Most expensive Old model\n" +
+                        "- Hinge is prone to snapping\n" +
+                        "- Has the lowest pixel density along with the New 3DS XL, as it has the largest screen size and the pixels have been enlarged the most\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                case "n2ds":
+                case "new2ds":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the New 2DS")
+                        .WithDescription("__Cons:__\n" +
+                        "- Does not exist.\n");
+                    break;
+                case "o2ds":
+                case "2ds":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the Old 2DS")
+                        .WithDescription("__Pros:__\n" +
+                        "- Cheapest 3DS model\n" +
+                        "- Has the best pixel density of all the models, along with the original 3DS, as it has the smallest screen size and the pixels have not been enlarged\n" +
+                        "- Includes rounded edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
+                        "- Most difficult 3DS model to break\n" +
+                        "- Easy SD card access\n\n" +
+                        "__Neutral:__\n" +
+                        "- Slightly larger and a different shape to the original 3DS; often considered comfortable for most hand sizes\n" +
+                        "- Has a large, non-retractable stylus\n" +
+                        "- Has the same battery life as the original 3DS\n" +
+                        "- Includes semi-transparent colour options to choose from\n" +
+                        "- If buying used, there is a lower chance that an Ambassador Certificate will be included compared to the original 3DS model\n" +
+                        "- Some models include a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
+                        "- Does not include a hinge and isn’t foldable like the other 3DS models\n" +
+                        "- Is slightly heavier than the original 3DS model, and is lighter than the other models\n" +
+                        "- Supports a regular sized SD card\n\n" +
+                        "__Cons:__\n" +
+                        "- Mono speakers instead of stereo, however stereo sound can be achieved through headphone use\n" +
+                        "- Does not support the Circle Pad Pro accessory\n" +
+                        "- Does not support for the charging cradle\n" +
+                        "- Quietest speakers out of all models\n" +
+                        "- Smallest screen of all models\n" +
+                        "- Although it has rounded edges, the edges aren’t as smooth as the 3DS XL, New 3DS, and New 3DS XL\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                case "n3ds":
+                case "new3ds":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the New 3DS")
+                        .WithDescription("__Pros:__\n" +
+                        "- Includes a higher pixel density than the XL models\n" +
+                        "- The 3D slider locks into the off position\n" +
+                        "- Includes smoother edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
+                        "- The hinge, along with the New 3DS XL, are the most robust of all the models\n" +
+                        "- More durable than the original 3DS model\n" +
+                        "- Includes stereo speakers\n" +
+                        "- Is louder than the 3DS XL and 2DS, and the same volume as the other models\n\n" +
+                        "__Neutral:__\n" +
+                        "- Slightly larger than the original 3DS model, and smaller than the XL models; still good for small hands\n" +
+                        "- There is a slim chance when buying used that an Ambassador Certificate will be included\n" +
+                        "- Includes a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
+                        "- Includes semi-transparent colour options to choose from\n" +
+                        "- If buying used, there is a lower chance that an Ambassador Certificate will be included compared to the original 3DS model\n" +
+                        "- Some models include a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
+                        "- Is lighter than the XL models, but heavier than the original 3DS and 2DS\n" +
+                        "- Supports a microSD card\n\n" +
+                        "__Cons:__\n" +
+                        "- Second most expensive model in most regions, most expensive model in the NA region\n" +
+                        "- Has a slightly lower pixel density than the original 3DS\n" +
+                        "- Has a small, flimsy, non-retractable stylus\n" +
+                        "- Does not have special edition releases, and very limited color options\n" +
+                        "- Backplate needs to be removed to access the microSD card\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                case "n3dsxl":
+                case "new3dsxl":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the New 3DS XL")
+                        .WithDescription("__Pros:__\n" +
+                        "- Has the best battery life of all the 3DS models\n" +
+                        "- The 3D slider locks into the off position\n" +
+                        "- Has special edition releases\n" +
+                        "- Includes smoother edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
+                        "- The hinge, along with the New 3DS, are the most robust of all the models\n" +
+                        "- Includes stereo speakers\n" +
+                        "- Is louder than the 3DS XL and 2DS, and the same volume as the other models\n\n" +
+                        "__Neutral:__\n" +
+                        "- Bigger than the original 3DS, with 90% larger screens; good for big hands but not for smaller hands\n" +
+                        "- Has a large, non-retractable stylus\n" +
+                        "- There is a slim chance when buying used that an Ambassador Certificate will be included\n" +
+                        "- Includes a gloss finished as opposed to a matte one; this means the console looks shiny but gets easily marked by fingerprints\n" +
+                        "- Is slightly lighter than the 3DS XL, but heavier than the 2DS and non-XL models\n" +
+                        "- Supports a microSD card\n\n" +
+                        "__Cons:__\n" +
+                        "- The most expensive 3DS model in most regions\n" +
+                        "- Has the lowest pixel density along with the 3DS XL, as it has the largest screen size and the pixels have been enlarged the most\n" +
+                        "- Does not have swappable faceplates\n" +
+                        "- Backplate needs to be removed to access the microSD card\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                case "n2dsxl":
+                case "new2dsxl":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the New 2DS XL")
+                        .WithDescription("__Pros:__\n" +
+                        "- The cheapest “clamshell” 3DS model with XL screens\n" +
+                        "- Has special edition releases\n" +
+                        "- Includes smoother edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
+                        "- The hinge, along with the New 3DS, are the most robust of all the models\n" +
+                        "- Includes stereo speakers\n" +
+                        "- Easy microSD card access\n\n" +
+                        "__Neutral:__\n" +
+                        "- Bigger than the original 3DS, with 90% larger screens; good for big hands but not for smaller hands\n" +
+                        "- Includes a matte finished, as opposed to a gloss one; this means the console does not look shiny and is prone to scratching but also doesn’t get as easily marked by fingerprints\n" +
+                        "- Launch editions feature bold color schemes and a textured outer upper surface\n" +
+                        "- Is slightly smaller than the New 3DS XL, weighing the same as the 2DS (9.2oz / 260g)\n" +
+                        "- Supports a microSD card\n\n" +
+                        "__Cons:__\n" +
+                        "- Has higher rates of both FCRAM and NAND failure\n" +
+                        "- Has the lowest pixel density along with the 3DS XL and New 3DS XL, as it has the largest screen size and the pixels have been enlarged the most\n" +
+                        "- Does not have swappable faceplates\n" +
+                        "- Poor build quality\n" +
+                        "- Widely considered to be the hardest model to repair\n" +
+                        "- Does not have support for the charging cradle\n" +
+                        "- Light bleeds on the white and orange edition\n" +
+                        "- Shortest battery life of the New models\n" +
+                        "- Shortest stylus out of all models\n" +
+                        "- Speakers placed where your hand goes\n\n" +
+                        "Check `?n3ds` to see the differences between the New and \"Old\" 3DS models.");
+                    break;
+                default:
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About the models")
+                        .WithDescription("With `?model` you can check the features of each model!\n" +
+                        "Type `?model <3ds/3dsxl/2ds/n3ds/n3dsxl/n2dsxl` to get more information about a specific model.\n" +
+                        "Type `?n3ds` to see the differences between New and \"Old\" models.");
+                    break;
+            }
+
+
+            await RespondToInfoCommand(replyBuilder);
         }
 
         private async Task HandleN2DSXLCommand()
@@ -3252,15 +3443,6 @@ namespace InetBot.Modules
                 "- Hinge prone to snapping\n" +
                 "- Difficult to repair (e.g battery glued in place)\n" +
                 "- Low quality build despite being in the \"New\" line\n\n" +
-                "Additionally, common complaints include:\n" +
-                "- High price despite being a budget console\n" +
-                "- Lower battery capacity (1300mAh vs 1750mAh)\n" +
-                "- LCD light bleeds through the shell on orange and white models\n" +
-                "- Speakers placed where your hand goes\n" +
-                "- Matte finish is prone to scratching\n" +
-                "- Tiny stylus\n" +
-                "- No 3D (obviously)\n" +
-                "- No charging cradle\n" +
                 "We are of course not saying to get rid of it if you already own one, but if you are in the market for a new 3DS it's best to avoid the n2DSXL for the reasons above.");
 
             await RespondToInfoCommand(replyBuilder);
@@ -3276,6 +3458,24 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task Handle2DSCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About the 2DS")
+                .WithDescription("The original 2DS is a good budget-friendly way to enter the 3DS ecosystem for the following reasons:\n" +
+                "+ Durable non-hinged design avoids the weakness of the hinges in other members of the line\n" +
+                "+ Considered by many to be the most comfortable system to hold in the 3DS line\n" +
+                "+ Low cost of entry to the 3DS game library\n" +
+                "+ Easy to repair due to the lack of a hinge\n\n" +
+                "There are some downsides/complaints about the system, though:\n" +
+                "- No stereo without using headphones\n" +
+                "- Less portable\n" +
+                "- No 3D capabilities\n\n" +
+                "Despite its downsides, the original 2DS is still the most affordable way to enter the DS/3DS family while still using original hardware, and we recommend one if you're on a tighter budget.");
+
+            await RespondToInfoCommand(replyBuilder);
+        }
+
         private async Task HandleCleanintyCommand()
         {
             var replyBuilder = new EmbedBuilder()
@@ -3284,7 +3484,7 @@ namespace InetBot.Modules
 
             await RespondToInfoCommand(replyBuilder);
         }
-       
+
         private async Task HandleSoapButGoodCommand()
         {
             var replyBuilder = new EmbedBuilder()
@@ -3473,7 +3673,7 @@ namespace InetBot.Modules
         private async Task HandleIntegrityCommand()
         {
             var replyBuilder = new EmbedBuilder()
-                .WithTitle("About NTRBoot")
+                .WithTitle("About SD sard integrity")
                 .WithDescription("https://wiki.hacks.guide/wiki/Checking_SD_card_integrity");
             await RespondToInfoCommand(replyBuilder);
         }
@@ -3574,79 +3774,99 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task HandleNHCommand()
+        {
+            var msg = _message;
+
+            string message = "We have loads of knowledgeable people lurking in this server; if you get lost trying to help someone with an issue you aren't up to solving, " +
+                "maybe wait until someone with more expirence comes around to help! But if the problem is above all our heads or needs immediate attention, here is a link to the " +
+                "Nintendo Homebrew Discord:\n" +
+                "https://discord.gg/nintendohomebrew";
+
+            if (_userMessage.Reference != null)
+            {
+                await _message.DeleteAsync();
+                await _userMessage.ReferencedMessage.ReplyAsync(message);
+            }
+            else
+            {
+                await _userMessage.ReplyAsync(message);
+            }
+        }
+
 
         private async Task HandleLinksCommand()
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("List of helpful links")
                 .WithDescription("Here is a list of useful links:\n\n" +
-                "`?soap ?cleaninty`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Cleaninty\n\n" +
-                "`?mkey`\n" +
-                "https://mkey.nintendohomebrew.com/\n\n" +
-                "`?hardwaretest ?hwt`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
-                "`?dump ?dumping`\n" +
-                "https://3ds.hacks.guide/dumping-titles-and-game-cartridges.html\n\n" +
-                "`?finalising ?finalise`\n" +
-                "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
-                "`?corrupt ?fixer ?fcg`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Fixing_corrupted_games\n\n" +
+                "`?3dsbank`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:3DSBank\n\n" +
+                "`?atob`\n" +
+                "https://3ds.hacks.guide/a9lh-to-b9s.html\n\n" +
+                "`?b9s`\n" +
+                "https://3ds.hacks.guide/updating-b9s.html\n\n" +
+                "`?backup`\n" +
+                "https://3ds.hacks.guide/godmode9-usage.html#creating-a-nand-backup\n" +
+                "https://3ds.hacks.guide/godmode9-usage.html#restoring-a-nand-backup\n\n" +
                 "`?bsu`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Black_screen_unbrick\n\n" +
+                "`?corrupt ?fixer ?fcg`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Fixing_corrupted_games\n\n" +
+                "`?ctrcheck`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Ctrcheck\n\n" +
+                "`?ctrtransfer`\n" +
+                "https://3ds.hacks.guide/ctrtransfer.html\n\n" +
                 "`?dsmu`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:DS_mode_unbrick\n\n" +
-                "`?restore ?update`\n" +
-                "https://3ds.hacks.guide/restoring-updating-cfw.html\n\n" +
+                "`?dump ?dumping`\n" +
+                "https://3ds.hacks.guide/dumping-titles-and-game-cartridges.html\n\n" +
+                "`?essential`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:3ds_essential_dumper\n\n" +
+                "`?faketik`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Faketik\n\n" +
+                "`?finalising ?finalise`\n" +
+                "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
+                "`?ftp`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
+                "`?hardwaretest ?hwt`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
+                "`?integrity ?checksd ?fakesd`\n" +
+                "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
+                "`?locale ?extendedlocale`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting\n\n" +
+                "`?ltob`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Luma3DS_to_boot9strap\n\n" +
                 "`?luma`\n" +
                 "https://github.com/LumaTeam/Luma3DS/releases/latest\n" +
                 "https://github.com/LumaTeam/Luma3DS/releases/tag/v7.0.5\n\n" +
-                "`?ctrtransfer`\n" +
-                "https://3ds.hacks.guide/ctrtransfer.html\n\n" +
-                "`?movable`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Movable_Moveover\n\n" +
-                "`?missing`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Missing_Titles\n\n" +
-                "`?titlefixer`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Gm9-title-fixer\n\n" +
-                "`?ctrcheck`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Ctrcheck\n\n" +
-                "`?things`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Things_to_do\n\n" +
                 "`?mid0`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID0\n\n" +
                 "`?mid1`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Troubleshooting/multiple_ID1\n\n" +
-                "`?integrity ?checksd ?fakesd`\n" +
-                "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
-                "`?ntrboot`\n" +
-                "https://3ds.hacks.guide/ntrboot.html\n\n" +
-                "`?uninstall`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
-                "`?ftp`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
-                "`?essential`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:3ds_essential_dumper\n\n" +
-                "`?backup`\n" +
-                "https://3ds.hacks.guide/godmode9-usage.html#creating-a-nand-backup\n" +
-                "https://3ds.hacks.guide/godmode9-usage.html#restoring-a-nand-backup\n\n" +
+                "`?missing`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Missing_Titles\n\n" +
+                "`?mkey`\n" +
+                "https://mkey.nintendohomebrew.com/\n\n" +
+                "`?movable`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Movable_Moveover\n\n" +
                 "`?nnid ?nnidunlink ?unlinknnid`\n" +
                 "https://3ds.hacks.guide/godmode9-usage.html#removing-an-nnid-without-formatting-your-console\n\n" +
-                "`?locale ?extendedlocale`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting\n\n" +
-                "`?faketik`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Faketik\n\n" +
-                "`?atob`\n" +
-                "https://3ds.hacks.guide/a9lh-to-b9s.html\n\n" +
-                "`?ltob`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:Luma3DS_to_boot9strap\n\n" +
-                "`?b9s`\n" +
-                "https://3ds.hacks.guide/updating-b9s.html\n\n" +
+                "`?ntrboot`\n" +
+                "https://3ds.hacks.guide/ntrboot.html\n\n" +
+                "`?restore ?update`\n" +
+                "https://3ds.hacks.guide/restoring-updating-cfw.html\n\n" +
+                "`?soap ?cleaninty`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Cleaninty\n\n" +
                 "`?stealth ?stealthluma`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Alternate_Exploits/Installing_boot9strap_(Stealth_Luma3DS)\n\n" +
-                "`?3dsbank`\n" +
-                "https://wiki.hacks.guide/wiki/3DS:3DSBank\n\n" +
+                "`?things`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Things_to_do\n\n" +
+                "`?titlefixer`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Gm9-title-fixer\n\n" +
+                "`?uninstall`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
                 "`?links`\n" +
                 "You're looking at it right now dummy.");
 
@@ -3848,7 +4068,7 @@ namespace InetBot.Modules
         }
 
         private async Task HandleAboutCommand()
-        { 
+        {
             var attribute = Assembly.GetExecutingAssembly().GetCustomAttribute<BuildDateAttribute>();
             DateTime buildTime = attribute?.DateTime ?? default;
 
@@ -3862,13 +4082,13 @@ namespace InetBot.Modules
 
             foreach (Punishment item in punishments.punishmentList)
             {
-                if (item.targetID == 1267418843337199661) counter++;            
+                if (item.targetID == 1267418843337199661) counter++;
             }
 
             var replyBuilder = new EmbedBuilder()
                 .WithTitle($"About me!")
                 .WithDescription($"Hey! I'm **Inet-Kun**, a custom bot developed by **Vendell** for the **r/3DS** discord server. Here's a few things about me!\n" +
-                $"I'm written in **C# .NET 8.0** using **Discord.Net v3.19.0-beta.1**.\n" +
+                $"I'm written in **C# .NET 8.0** using **Discord.Net v3.20.1**.\n" +
                 $"Currently running on **{RuntimeInformation.OSDescription}**\n\n" +
                 $":octagonal_sign: Total Punishments: **{punishments.punishmentIndex}**\n" +
                 $":envelope: Total Modmails: **{modmails.modmailIndex}**\n" +
@@ -3876,7 +4096,7 @@ namespace InetBot.Modules
                 $":tools: Built on **{buildTime}**\n" +
                 $":clock1: Process uptime: **{uptime}**\n" +
                 $":zap: Server current power usage: **{PowerUsage.GetPowerUsage().StatusSNS.ENERGY.Power}W**\n" +
-                $":page_facing_up: Lines of code: **~5500**")
+                $":page_facing_up: Lines of code: **~6500**")
                 .WithFooter("Thank you for using! <3");
 
             if (isSlashCommand) await RespondToSlashCommand(replyBuilder);
@@ -3890,7 +4110,7 @@ namespace InetBot.Modules
                 return;
             }
 
-            switch (logEntry.Action) 
+            switch (logEntry.Action)
             {
                 case ActionType.Ban:
                     await HandleBanAuditLog(logEntry, guild, client);

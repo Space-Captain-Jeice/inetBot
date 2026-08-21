@@ -39,6 +39,10 @@ namespace InetBot.Modules
             
             if (Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*69\\s*(?!\\w)") || Regex.IsMatch(message.Content.ToLower(), "(?<!\\w)\\s*420\\s*(?!\\w)")) await ((SocketUserMessage)message).ReplyAsync("nice");
 
+            ISticker[] selfie = [await guild.GetStickerAsync(1434312057389453403)];
+
+            if (message.Content.ToLower().Contains("inet") && message.Content.ToLower().Contains("selfie")) await message.Channel.SendMessageAsync(stickers: selfie);
+
 
             //initialize a list of modmails and punishments for use across the class
             ticketFileRoot = ModMailTicketFileRoot.GetModMailTickets();
@@ -287,7 +291,7 @@ namespace InetBot.Modules
                 .WithImageUrl("https://cdn.discordapp.com/attachments/575033344002359298/1244756751249576006/green.jpg")
                 .WithFooter("To reply, send '=<message>'! To close, send '=close <reason>'");
 
-            var roleList = string.Join(", ", sourceGuild.GetUser(sourceMessage.Author.Id).Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
+            var roleList = string.Join(", ", sourceGuild.GetUser(sourceMessage.Author.Id).Roles.Select(x => x.Mention));
 
             EmbedBuilder openEmbedBuilder = new EmbedBuilder()
                 .WithAuthor($"{sourceMessage.Author.Username} [{sourceMessage.Author.Id}]", sourceMessage.Author.GetAvatarUrl() ?? sourceMessage.Author.GetDefaultAvatarUrl())

@@ -51,8 +51,7 @@ namespace InetBot
         public async Task Run()
         {
             DiscordSocketConfig config = new();
-            config.GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.MessageContent;
-            config.AlwaysDownloadUsers = true;
+            config.GatewayIntents = GatewayIntents.AllUnprivileged |  GatewayIntents.MessageContent;
 
             _client = new DiscordSocketClient(config);
 
@@ -283,7 +282,7 @@ namespace InetBot
             Thread tcpListenThread = new Thread(new ThreadStart(tcpListen));
             Thread httpListenThread = new Thread(new ThreadStart(httpListen));
             tcpListenThread.Start();
-            //httpListenThread.Start();
+            httpListenThread.Start();
 
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
@@ -384,7 +383,8 @@ namespace InetBot
             .WithName("nohelp")
             .WithDefaultMemberPermissions(GuildPermission.KickMembers)
             .WithDescription("Gives user the No Help role, removing their ability to post in #hacking and #questions-and-support.")
-            .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to nohelp", isRequired: true);
+            .AddOption("user", ApplicationCommandOptionType.User, "The user who you want to nohelp", isRequired: true)
+            .AddOption("reason", ApplicationCommandOptionType.String, "The reason for the nohelp", isRequired: true);
 
             var yeshelpCommand = new SlashCommandBuilder()
             .WithName("yeshelp")
@@ -591,6 +591,16 @@ namespace InetBot
             else if(customId.Contains("finish"))
             {
                 await commands.gamerBoard.FinishMatch(component, _guild);
+            }
+            else if(customId.Contains("appeals") && customId.Contains("accept"))
+            {
+                BanAppeals appeals = new();
+                await appeals.AcceptAppeal(component, _guild);
+            }
+            else if(customId.Contains("appeals") && customId.Contains("deny"))
+            {
+                BanAppeals appeals = new();
+                await appeals.DenyAppeal(component, _guild);
             }
         }
 
