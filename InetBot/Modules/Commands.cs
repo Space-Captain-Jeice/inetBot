@@ -35,9 +35,34 @@ namespace InetBot.Modules
         string by = "";
         string valueID = "";
 
-        string[] modCommands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "accept", "deny", "role"];
-        string[] commands = ["ban", "unban", "kick", "unkick", "mute", "unmute", "nohelp", "yeshelp", "warn", "unwarn", "getpunishments", "deny", "accept", "help", "rule", "rules", "say", "ping", "format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "fileextension", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "pretendo", "citra", "emulator", "emulation", "guide", "3ds", "n3ds", "cat", "dog", "otter", "bird", "birb", "balance", "no", "leaderboard", "lfg", "match"];
-        string[] infoCommands = ["format", "formatbutgood", "formst", "formatting", "sd", "sdcard", "fileextension", "piracy", "piracybutgood", "tnips", "panel", "panels", "ips", "tn", "pretendo", "citra", "emulator", "emulation", "3ds", "n3ds"];
+        readonly string[] modCommands = [
+            "ban", "unban", "kick", "unkick",
+            "mute", "unmute", "nohelp", "yeshelp",
+            "warn", "unwarn", "getpunishments", "accept",
+            "deny", "role"
+        ];
+        readonly string[] commands = [
+            "ban", "unban", "kick", "unkick",
+            "mute", "unmute", "nohelp", "yeshelp",
+            "warn", "unwarn", "getpunishments", "deny",
+            "accept", "help", "rule", "rules",
+            "say", "ping", "format", "formatbutgood",
+            "formst", "formatting", "sd", "sdcard",
+            "fileextension", "piracy", "piracybutgood", "tnips",
+            "panel", "panels", "ips", "tn",
+            "pretendo", "citra", "emulator", "emulation",
+            "guide", "3ds", "n3ds", "cat",
+            "dog", "otter", "bird", "birb",
+            "balance", "no", "leaderboard", "lfg",
+            "match"
+        ];
+        readonly string[] infoCommands = [
+            "format", "formatbutgood", "formst", "formatting",
+            "sd", "sdcard", "fileextension", "piracy",
+            "piracybutgood", "tnips", "panel", "panels",
+            "ips", "tn", "pretendo", "citra",
+            "emulator", "emulation", "3ds", "n3ds"
+        ];
 
         public SocketTextChannel _modChannel;
 
