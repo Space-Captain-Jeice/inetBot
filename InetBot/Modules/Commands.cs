@@ -6,7 +6,10 @@ using Newtonsoft.Json;
 using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using static InetBot.Data.User;
+using static InetBot.Data.PregeneratedRegex;
+using InetBot.Data.Bootrom;
 
 
 namespace InetBot.Modules
@@ -54,7 +57,7 @@ namespace InetBot.Modules
             "guide", "3ds", "n3ds", "cat",
             "dog", "otter", "bird", "birb",
             "balance", "no", "leaderboard", "lfg",
-            "match"
+            "match", "bootromerror"
         ];
         readonly string[] infoCommands = [
             "format", "formatbutgood", "formst", "formatting",
@@ -208,6 +211,12 @@ namespace InetBot.Modules
                 case "match":
                     string game = command.Data.Options.First().Name;
                     await HandleMatchCommand(game, guild);
+                    break;
+                case "bootromerror":
+                    SocketSlashCommandDataOption subcommand = command.Data.Options.First();
+                    string errorparsetype = subcommand.Name;
+                    string code = string.Join("", subcommand.Options.Select(g => g.Value.ToString()).ToArray());
+                    await HandleBootromErrorCommand(errorparsetype, code);
                     break;
                 case "help":
                     guildUser = command.User as SocketGuildUser;
@@ -1107,6 +1116,185 @@ namespace InetBot.Modules
                 default:
                     break;
             }
+        }
+
+        readonly static string InvalidBootromParse = "Invalid error format passed!\n" +
+            "A BootROM error is displayed in a bluescreen in yellow text.\n\n" +
+            "Example error:\n" +
+            "```\n" +
+            "BOOTROM 8046\n" +
+            "ERRCODE: 00F800FF\n" +
+            "DEDEFFFF FFFFFFFF\n" +
+            "00000000 00000000\n" +
+            "```\n\n" +
+            "For a short error command, please provide only the hexadecimal part of the line **ERRCODE**.\n" +
+            "For a full error command, please provide the whole hexadecimal text after **ERRCODE**.\n\n" +
+            "It's preferred to use the full error command.\n" +
+            "The first block doesn't provide a summary for the whole code.\n" +
+            "Complete details are provided with the full error.";
+
+        private async Task HandleBootromErrorCommand(string errorparsetype, string code)
+        {
+            code = Data.PregeneratedRegex.Whitespaces.Replace(code, "");
+
+            InetBot.Data.Bootrom.BootError booterror;
+
+            bool failed = false;
+
+            string? Description = null;
+            string? SleepSwitchDescription = null;
+            string? NVRAMLoadDescription = null;
+            string? NTRBootLoadDescription = null;
+            string? NANDLoadDescription = null;
+            string[]? FirmPartitionLoadDescriptions = null;
+            string[]? SDDriverDescriptions = null;
+            string[]? SDHardwareDescriptions = null;
+
+            EmbedBuilder response = new()
+            {
+                Title = "Bootrom Error",
+                Color = 0x7f00ffu
+            };
+
+            switch (errorparsetype)
+            {
+                case "shortcode":
+                    string matchcode = Data.PregeneratedRegex.BootromShortCodeParser.Match(code).Value;
+                    if(string.IsNullOrEmpty(matchcode))
+                    {
+                        failed = true;
+                        break;
+                    }
+                    uint codeint = Convert.ToUInt32(matchcode, 16);
+                    booterror = new InetBot.Data.Bootrom.BootError(codeint);
+
+                    Description = "```" +
+                        "BOOTROM 8046\n" +
+                        $"ERRCODE: {codeint:X8}\n" +
+                        "```";
+
+                    SleepSwitchDescription = InetBot.Data.Bootrom.BootError.TranslateSleepSwitch(booterror.SleepSwitch);
+                    NVRAMLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NVRAMLoadCode);
+                    NTRBootLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NTRBootLoadCode);
+                    NANDLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NANDLoadCode);
+
+                    break;
+                case "fullerror":
+                    Match match = Data.PregeneratedRegex.BootromFullCodeParser.Match(code);
+                    if (string.IsNullOrEmpty(match.Value))
+                    {
+                        failed = true;
+                        break;
+                    }
+                    var codes = match.Groups.Values.Skip(1).Select(g => Convert.ToUInt32(g.Value, 16)).ToArray();
+                    booterror = new InetBot.Data.Bootrom.BootError(codes[0], codes[1], codes[2], codes[3], codes[4]);
+
+                    Description = "```\n" +
+                        "BOOTROM 8046\n" +
+                        $"ERRCODE: {codes[0]:X8}\n" +
+                        $"{codes[1]:X8} {codes[2]:X8}\n" +
+                        $"{codes[3]:X8} {codes[4]:X8}\n" +
+                        "```";
+
+                    SleepSwitchDescription = InetBot.Data.Bootrom.BootError.TranslateSleepSwitch(booterror.SleepSwitch);
+                    NVRAMLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NVRAMLoadCode);
+                    NTRBootLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NTRBootLoadCode);
+                    NANDLoadDescription = InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(booterror.NANDLoadCode);
+
+                    FirmPartitionLoadDescriptions = booterror.FirmPartitionLoadCodes.Select(
+                        g => InetBot.Data.Bootrom.BootError.TranslateBootStatusCode(g)
+                    ).ToArray();
+
+                    SDDriverDescriptions = InetBot.Data.Bootrom.BootError.TranslateSDDriverError(booterror.SDDriverError);
+                    SDHardwareDescriptions = InetBot.Data.Bootrom.BootError.TranslateSDHardwareError(booterror.SDHardwareError);
+                    break;
+                default:
+                    break;
+            }
+
+            if (failed)
+            {
+                response.WithDescription(InvalidBootromParse)
+                    .WithColor(0xff0000u);
+            }
+            else
+            {
+                response.WithDescription(string.IsNullOrEmpty(Description) ? "Unexpected code condition" : Description);
+
+                List<EmbedFieldBuilder> fields = new();
+
+                if (!string.IsNullOrEmpty(SleepSwitchDescription))
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("Sleep Switch State")
+                        .WithValue($"- {SleepSwitchDescription}")
+                        .WithIsInline(false)
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(NVRAMLoadDescription))
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("NVRAM BootROM Status Code")
+                        .WithValue($"- {NVRAMLoadDescription}")
+                        .WithIsInline(false)
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(NTRBootLoadDescription))
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("NTRBoot BootROM Status Code")
+                        .WithValue($"- {NTRBootLoadDescription}")
+                        .WithIsInline(false)
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(NANDLoadDescription))
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("NAND BootROM Status Code")
+                        .WithValue($"- {NANDLoadDescription}")
+                    );
+                }
+
+                if (FirmPartitionLoadDescriptions != null && FirmPartitionLoadDescriptions.Length != 0)
+                {
+                    for (int i = 0; i < FirmPartitionLoadDescriptions.Length; i++)
+                    {
+                        fields.Add(new EmbedFieldBuilder()
+                            .WithName($"NCSD Partition {i} BootROM Status Codes")
+                            .WithValue($"- {FirmPartitionLoadDescriptions[i]}")
+                            .WithIsInline(false)
+                        );
+                    }
+
+                }
+
+                if (SDDriverDescriptions != null && SDDriverDescriptions.Length != 0)
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("SD/MMC Driver Status Bits")
+                        .WithValue(string.Join("\n", SDDriverDescriptions.Select(g => $"- {g}")))
+                        .WithIsInline(false)
+                    );
+                }
+
+                if (SDHardwareDescriptions != null && SDHardwareDescriptions.Length != 0)
+                {
+                    fields.Add(new EmbedFieldBuilder()
+                        .WithName("SD/MMC Hardware Status Bits")
+                        .WithValue(string.Join("\n", SDHardwareDescriptions.Select(g => $"- {g}")))
+                        .WithIsInline(false)
+                    );
+                }
+
+                if (fields.Count != 0) {
+                    response.WithFields(fields.ToArray());
+                }
+            }
+
+             await RespondToSlashCommand(response);
         }
 
         private async Task HandleHelpCommand(SocketGuildUser guildUser)

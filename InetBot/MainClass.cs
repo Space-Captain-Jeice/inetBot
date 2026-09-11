@@ -458,6 +458,22 @@ namespace InetBot
                 .WithName("leaderboard")
                 .WithDescription("Get the game leaderboards."));
 
+            var bootromCommand = new SlashCommandBuilder()
+            .WithName("bootromerror")
+            .WithDescription("Look up a bootrom error code.")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .WithName("shortcode")
+                .WithDescription("Look up just the first block of the error.")
+                .AddOption("error", ApplicationCommandOptionType.String, "The error code from \"ERRCODE\" line only.", minLength: 8, maxLength: 8, isRequired: true)
+                )
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .WithName("fullerror")
+                .WithDescription("Look up the full error.")
+                .AddOption("error", ApplicationCommandOptionType.String, "The whole error code described by \"ERRCODE\".", minLength: 40, isRequired: true)
+                );
+
             var helpCommand = new SlashCommandBuilder()
             .WithName("help")
             .WithDescription("Shows a help message.");
@@ -490,6 +506,8 @@ namespace InetBot
                 //await _guild.CreateApplicationCommandAsync(matchCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(helpCommand.Build());
+
+                //await _guild.CreateApplicationCommandAsync(bootromCommand.Build());
 
                 //await _guild.CreateApplicationCommandAsync(roleCommand.Build());
             }
