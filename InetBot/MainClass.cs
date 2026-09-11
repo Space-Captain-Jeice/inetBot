@@ -20,6 +20,7 @@ using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 using Object = System.Object;
 
 namespace InetBot
@@ -205,7 +206,6 @@ namespace InetBot
                             response = (FormResponse)serializer.Deserialize(readStream, typeof(FormResponse));
                         }
                     }
-
 
                     BanAppeals banAppeals = new();
                     Commands appealCommands = new Commands();
@@ -493,7 +493,7 @@ namespace InetBot
 
                 //await _guild.CreateApplicationCommandAsync(roleCommand.Build());
             }
-            catch (ApplicationCommandException ex)
+            catch (HttpException ex)
             {
 
                 // If our command was invalid, we should catch an ApplicationCommandException. This exception contains the path of the error as well as the error message. You can serialize the Error field in the exception to get a visual of where your error is.
