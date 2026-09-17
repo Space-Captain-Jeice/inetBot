@@ -965,6 +965,9 @@ namespace InetBot.Modules
                     case "homebrew":
                         await HandleNHCommand();
                         break;
+                    case "dsi":
+                        await HandleDSICommand();
+                        break;
                     case "links":
                         await HandleLinksCommand();
                         break;
@@ -4133,6 +4136,14 @@ namespace InetBot.Modules
             {
                 await _userMessage.ReplyAsync(message);
             }
+        }
+
+        private async Task HandleDSICommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("DSi Mode Hacking")
+                .WithDescription("https://discord.gg/fCzqcWteC4");
+            await RespondToInfoCommand(replyBuilder);
         }
 
 
