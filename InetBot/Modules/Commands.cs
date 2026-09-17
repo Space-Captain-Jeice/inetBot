@@ -1347,6 +1347,10 @@ namespace InetBot.Modules
                 "Provides information about various topics.\n\n" +
                 "`?sd <transfer>`\n" +
                 "Gives you information about SD cards and optionally how to transfer your data to a new card.\n\n" +
+                "`/bootromerror <shortcode/fullerror> <error code>`\n" +
+                "'/bootromerror shortcode error: 00F800FF'\n" +
+                "'/bootromerror fullerror error: 00F800FF CFCFFFFF FFFFFFFF 00000000 00000000'\n" +
+                "Breaks down a bootrom error message.\n\n" +
                 "`?guide <transfer, cfwupdate, systemupdate, regionchange>`\n" +
                 "Gives you information about guides. Optionally points you to guide sections.\n\n" +
                 "`?links`\n" +
@@ -1401,7 +1405,7 @@ namespace InetBot.Modules
                     break;
                 case 2:
                     title = "Rule 2: No spamming";
-                    description = "No spamming or trolling. This includes, but is not limited to: excessive bot commands, pings, images, and links to other websites. " +
+                    description = "No spamming or trolling. This includes, but is not limited to: AI generated content, excessive bot commands, pings, images, and links to other websites. " +
                         "It's completely unnecessary and just clogs and disrupts the chat.";
                     color = Color.Orange;
                     break;
@@ -1512,6 +1516,11 @@ namespace InetBot.Modules
                     title = "Rule 1010: SpyderDK";
                     description = "Vendell's bf :3";
                     color = Color.Parse("#ffe554");
+                    break;
+                case 1337:
+                    title = "Rul3 1337: l33t h4xx0r";
+                    description = "im in.";
+                    color = Color.Parse("#00ff00");
                     break;
                 case 0403:
                     title = "Rule 0403: Wario always wins! Wahaha!";
