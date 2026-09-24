@@ -33,6 +33,7 @@ namespace InetBot
         private SocketGuild _guild;
 
         Commands commands = new();
+        ScamDetector scamDetector = new();
 
         //3ds
         private static ulong _guildId = 248504507430993921;
@@ -570,6 +571,10 @@ namespace InetBot
             {
                 //await textCommands.HandleCommand(message, _guild, _client);
                 await commands.HandleCommand(message, _guild, _client);
+            }
+            else if (message.Attachments.Count == 4)
+            {
+                scamDetector.ScanImage(message, _guild, _client);
             }
             else
             {

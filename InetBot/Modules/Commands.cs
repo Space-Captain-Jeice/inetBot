@@ -1939,7 +1939,7 @@ namespace InetBot.Modules
             return returns;
         }
 
-        private async Task HandleBanCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
+        public async Task HandleBanCommand(SocketGuildUser guildUser, string reason, SocketGuild guild)
         {
             if (guildUser.GuildPermissions.KickMembers)
             {
@@ -3650,20 +3650,20 @@ namespace InetBot.Modules
                     replyBuilder = new EmbedBuilder()
                         .WithTitle("About the New 3DS")
                         .WithDescription("__Pros:__\n" +
-                        "- Slightly longer battery life than the Original 3DS, 3DS XL and 2DS\n" +
-                        "- Higher pixel density than the XL models\n" +
-                        "- 3D slider locks into the off position\n" +
-                        "- Smoother edges around the console, causing less discomfort than the Original 3DS’s sharp edges\n" +
+                        "- Customizable with a wide range of faceplates\n" +
+                        "- Includes a higher pixel density than the XL models\n" +
+                        "- The 3D slider locks into the off position\n" +
+                        "- Includes smoother edges around the console, causing less discomfort than the original 3DS’s sharp edges\n" +
                         "- The hinge, along with the New 3DS XL, are the most robust of all the models\n" +
                         "- More durable than the Original 3DS model\n" +
                         "- Optional 3D effect on the top screen\n" +
                         "- Includes stereo speakers\n" +
                         "- Is louder than the 3DS XL and 2DS, and the same volume as the other models\n\n" +
                         "__Neutral:__\n" +
-                        "- Slightly larger than the Original 3DS model, and smaller than the XL models; still good for small hands\n" +
-                        "- There is a slim chance when buying used that an Ambassador Certificate will be included\n" +
-                        "- Cover plates have a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
-                        "- Lighter than the XL models, but heavier than the Original 3DS and 2DS\n" +
+                        "- Slightly larger than the original 3DS model, and smaller than the XL models; still good for small hands\n" +
+                        "- Includes a matte finish, as opposed to a gloss one; this means the console does not look shiny but also doesn’t get as easily marked by fingerprints\n" +
+                        "- If buying used, there is a lower chance that an Ambassador Certificate will be included compared to the original 3DS model\n" +
+                        "- Is lighter than the XL models, but heavier than the original 3DS and 2DS\n" +
                         "- Supports a microSD card\n\n" +
                         "__Cons:__\n" +
                         "- Second most expensive model in most regions, most expensive model in the NA region\n" +
