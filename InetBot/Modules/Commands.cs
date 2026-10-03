@@ -689,6 +689,7 @@ namespace InetBot.Modules
                         break;
                     case "rule":
                     case "rules":
+                    case "r":
                         long bet = 0;
                         int rule = 1000;
                         try
@@ -872,6 +873,7 @@ namespace InetBot.Modules
                         await HandleMissingTitlesCommand();
                         break;
                     case "titlefixer":
+                    case "gm9titlefixer":
                         await HandleTitleFixerCommand();
                         break;
                     case "ctrcheck":
