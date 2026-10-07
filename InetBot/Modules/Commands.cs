@@ -785,6 +785,11 @@ namespace InetBot.Modules
 
                         await HandleGuideCommand(section);
                         break;
+                    case "gm9":
+                        string gm9 = "";
+                        if (message.Content.Length > 11) gm9 = message.Content.Remove(3, 11);
+                        await HandleGM9Command(gm9);
+                        break;
                     case "model":
                         string model = "";
                         if (message.Content.Length > 7) model = message.Content.Remove(0, 7);
@@ -3546,6 +3551,29 @@ namespace InetBot.Modules
 
             await RespondToInfoCommand(replyBuilder);
 
+        }
+
+        private async Task HandleGM9Command(string gm9)
+        {
+            EmbedBuilder replyBuilder = new();
+
+            switch (gm9)
+            {
+                case "title fixer":
+                case "fixer":
+                    await HandleTitleFixerCommand();
+                    break;
+                case "uses":
+                case "use":
+                case "usage":
+                    replyBuilder = new EmbedBuilder()
+                        .WithTitle("About GM9 Uses")
+                        .WithDescription("https://3ds.hacks.guide/godmode9-usage");
+                    break;
+
+            }
+
+            await RespondToInfoCommand(replyBuilder);
         }
 
         private async Task HandleModelCommand(string model)
