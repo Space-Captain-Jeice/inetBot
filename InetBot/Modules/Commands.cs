@@ -960,6 +960,10 @@ namespace InetBot.Modules
                     case "uninstallcfw":
                         await HandleUninstallCFWCommand();
                         break;
+                    case "gatekeeper":
+                    case "unsigned":
+                        await HandleGatekeeperCommand();
+                        break;
                     case "nh":
                     case "nintendohomebrew":
                     case "homebrew":
@@ -4134,6 +4138,14 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task HandleGatekeeperCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("Opening Unsigned Apps on MacOS")
+                .WithDescription("https://wiki.hacks.guide/wiki/Gatekeeper");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
         private async Task HandleNHCommand()
         {
             var msg = _message;
@@ -4156,12 +4168,21 @@ namespace InetBot.Modules
 
         private async Task HandleDSICommand()
         {
-            var replyBuilder = new EmbedBuilder()
-                .WithTitle("DSi Mode Hacking")
-                .WithDescription("https://discord.gg/fCzqcWteC4");
-            await RespondToInfoCommand(replyBuilder);
-        }
+            var msg = _message;
 
+            string message = "DSI Mode Hacking's server:\n" +
+            "https://discord.gg/fCzqcWteC4";
+
+            if (_userMessage.Reference != null)
+            {
+                await _message.DeleteAsync();
+                await _userMessage.ReferencedMessage.ReplyAsync(message);
+            }
+            else
+            {
+                await _userMessage.ReplyAsync(message);
+            } 
+        }
 
         private async Task HandleLinksCommand()
         {
@@ -4201,6 +4222,8 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
                 "`?ftp ?ftpd`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
+                "`?gatekeeper` `?unsigned`\n" +
+                "https://wiki.hacks.guide/wiki/Gatekeeper\n\n" +
                 "`?hardwaretest ?hwt ?hwtest`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
                 "`?integrity ?checksd ?fakesd`\n" +
@@ -4212,6 +4235,7 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/3DS:Luma3DS_to_boot9strap\n\n" +
                 "`?luma`\n" +
                 "https://github.com/LumaTeam/Luma3DS/releases/latest\n" +
+                "https://github.com/LumaTeam/Luma3DS/releases/tag/v7.1\n" +
                 "https://github.com/LumaTeam/Luma3DS/releases/tag/v7.0.5\n\n" +
                 "`?manualctrtransfer ?manualctrt ?mctrt`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:CTRTransfer/Manual\n\n" +
