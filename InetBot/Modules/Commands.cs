@@ -962,7 +962,16 @@ namespace InetBot.Modules
                         break;
                     case "gatekeeper":
                     case "unsigned":
+                    case "unsignedfile":
+                    case "unsignedapp":
                         await HandleGatekeeperCommand();
+                        break;
+                    case "wireless":
+                    case "streaming":
+                    case "stream":
+                    case "wirelessstreaming":
+                    case "wirelessstream":
+                        await HandleWirelessStreamingCommand();
                         break;
                     case "nh":
                     case "nintendohomebrew":
@@ -4146,6 +4155,14 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task HandleWirelessStreamingCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Wireless Streaming")
+                .WithDescription("wiki.hacks.guide/wiki/3DS:Wireless_streaming");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
         private async Task HandleNHCommand()
         {
             var msg = _message;
@@ -4222,7 +4239,7 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
                 "`?ftp ?ftpd`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
-                "`?gatekeeper` `?unsigned`\n" +
+                "`?gatekeeper` `?unsignedfile` `?unsignedapp`\n" +
                 "https://wiki.hacks.guide/wiki/Gatekeeper\n\n" +
                 "`?hardwaretest ?hwt ?hwtest`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
@@ -4271,6 +4288,8 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/uninstall-cfw.html\n\n" +
                 "`?uninstall`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
+                "`?wirelessstreaming` `?wireless`\n" +
+                "wiki.hacks.guide/wiki/3DS:Wireless_streaming\n\n" +
                 "`?links`\n" +
                 "You're looking at it right now dummy.");
 
