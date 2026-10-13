@@ -903,10 +903,9 @@ namespace InetBot.Modules
                     case "ftpd":
                         await HandleFTPCommand();
                         break;
-                    case "essentials":
-                    case "idk":
+                    case "essential":
                     case "essentialdumper":
-                        await HandleEssentialsCommand();
+                        await HandleEssentialCommand();
                         break;
                     case "backup":
                         await HandleBackupCommand();
@@ -972,6 +971,20 @@ namespace InetBot.Modules
                     case "wirelessstreaming":
                     case "wirelessstream":
                         await HandleWirelessStreamingCommand();
+                        break;
+                    case "jumpstart":
+                    case "jump":
+                        await HandleJumpStartCommand();
+                        break;
+                    case "customkeyboard":
+                    case "customkey":
+                    case "keyboard":
+                        await HandleCustomKeyboardCommand();
+                        break;
+                    case "keyboardunbrick":
+                    case "keyunbrick":
+                    case "swkbdunbrick":
+                        await HandleKeyboardUnbrickCommand();
                         break;
                     case "nh":
                     case "nintendohomebrew":
@@ -1558,7 +1571,7 @@ namespace InetBot.Modules
                         "Juice, Furry boy, Japanese boy, Soace, Furry japanese goku mod, Chinese letter guy, Charger boy, Space Cat Jeice, jeissolini, furjeice, ginyu's red fella, Japanese goku guy, " +
                         "Chinese Goku Mod Anime Furry Guy, Furry man, British Boy, Furry british chinese goku, Goku pfp, Mec Goku chinois Modérateur d'Anime Furry, Chinese Goku Furry Mod Guy, Arabic Goku, " +
                         "Jeicd, Keice, japanese furry, British Goku, Mr Furry, Jeicey boy, British juice, Juice box, Sensei, Funny hair furry anime man, Cheese, Space Captain Cheese, " +
-                        "The mod with the goku pfp and the jaonese name, Arabic Goku, chinese goku mod anime guy god, Chinese gok san, that dbz mod, Jeicenet, ケモナー検討者";
+                        "The mod with the goku pfp and the jaonese name, Arabic Goku, chinese goku mod anime guy god, Chinese gok san, that dbz mod, Jeicenet, ケモナー検討者, Chief";
                     color = Color.Orange;
                     break;
                 case 8008:
@@ -4027,10 +4040,10 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
-        private async Task HandleEssentialsCommand()
+        private async Task HandleEssentialCommand()
         {
             var replyBuilder = new EmbedBuilder()
-                .WithTitle("About dumping essentials")
+                .WithTitle("About dumping essential files")
                 .WithDescription("https://wiki.hacks.guide/wiki/3DS:3ds_essential_dumper");
             await RespondToInfoCommand(replyBuilder);
         }
@@ -4159,10 +4172,33 @@ namespace InetBot.Modules
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About Wireless Streaming")
-                .WithDescription("wiki.hacks.guide/wiki/3DS:Wireless_streaming");
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Wireless_streaming");
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task HandleJumpStartCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About jumpstarting batteries")
+                .WithDescription("https://hardware.hacks.guide/wiki/Guides/Batteries");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleCustomKeyboardCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About installing a custom keyboard")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Custom_Keyboard");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
+        private async Task HandleKeyboardUnbrickCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("Keyboard Unbrick")
+                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Keyboard_Unbrick");
+            await RespondToInfoCommand(replyBuilder);
+        }
         private async Task HandleNHCommand()
         {
             var msg = _message;
@@ -4227,6 +4263,8 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/3DS:Ctrcheck\n\n" +
                 "`?ctrtransfer`\n" +
                 "https://3ds.hacks.guide/ctrtransfer.html\n\n" +
+                "`?customkeyboard` `?customkey`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Custom_Keyboard\n\n" +
                 "`?dsmu`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:DS_mode_unbrick\n\n" +
                 "`?dump ?dumping`\n" +
@@ -4245,6 +4283,10 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
                 "`?integrity ?checksd ?fakesd`\n" +
                 "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
+                "`?jumpstart`\n" +
+                "https://hardware.hacks.guide/wiki/Guides/Batteries\n\n" +
+                "`?keyboardunbrick` `?keyunbrick`\n" +
+                "https://wiki.hacks.guide/wiki/3DS:Keyboard_Unbrick\n\n" +
                 "`?locale ?extendedlocale`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting\n\n" +
