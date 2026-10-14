@@ -896,8 +896,9 @@ namespace InetBot.Modules
                     case "ntrboot":
                         await HandleNTRBootCommand();
                         break;
-                    case "uninstall":
-                        await HandleUninstallCommand();
+                    case "uninstallapps":
+                    case "uninstallapp":
+                        await HandleUninstallAppsCommand();
                         break;
                     case "ftp":
                     case "ftpd":
@@ -4024,7 +4025,7 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
-        private async Task HandleUninstallCommand()
+        private async Task HandleUninstallAppsCommand()
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About uninstalling software")
@@ -4263,7 +4264,7 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/3DS:Ctrcheck\n\n" +
                 "`?ctrtransfer`\n" +
                 "https://3ds.hacks.guide/ctrtransfer.html\n\n" +
-                "`?customkeyboard` `?customkey`\n" +
+                "`?customkeyboard ?customkey`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Custom_Keyboard\n\n" +
                 "`?dsmu`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:DS_mode_unbrick\n\n" +
@@ -4277,7 +4278,7 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/finalizing-setup.html\n\n" +
                 "`?ftp ?ftpd`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:FTP\n\n" +
-                "`?gatekeeper` `?unsignedfile` `?unsignedapp`\n" +
+                "`?gatekeeper ?unsignedfile ?unsignedapp`\n" +
                 "https://wiki.hacks.guide/wiki/Gatekeeper\n\n" +
                 "`?hardwaretest ?hwt ?hwtest`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
@@ -4285,7 +4286,7 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
                 "`?jumpstart`\n" +
                 "https://hardware.hacks.guide/wiki/Guides/Batteries\n\n" +
-                "`?keyboardunbrick` `?keyunbrick`\n" +
+                "`?keyboardunbrick ?keyunbrick`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Keyboard_Unbrick\n\n" +
                 "`?locale ?extendedlocale`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n" +
@@ -4330,7 +4331,7 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/uninstall-cfw.html\n\n" +
                 "`?uninstall`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
-                "`?wirelessstreaming` `?wireless`\n" +
+                "`?wirelessstreaming ?wireless`\n" +
                 "wiki.hacks.guide/wiki/3DS:Wireless_streaming\n\n" +
                 "`?links`\n" +
                 "You're looking at it right now dummy.");
