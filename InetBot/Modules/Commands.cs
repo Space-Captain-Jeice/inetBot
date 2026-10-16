@@ -906,6 +906,7 @@ namespace InetBot.Modules
                         break;
                     case "essential":
                     case "essentialdumper":
+                    case "idk":
                         await HandleEssentialCommand();
                         break;
                     case "backup":
