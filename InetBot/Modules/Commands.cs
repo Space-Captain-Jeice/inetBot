@@ -4069,7 +4069,8 @@ namespace InetBot.Modules
         {
             var replyBuilder = new EmbedBuilder()
                 .WithTitle("About setting locales")
-                .WithDescription("https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\nhttps://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting");
+                .WithDescription("Setting locales: https://wiki.hacks.guide/wiki/3DS:Setting_game_locales\n"
+                "Extended locale setting: https://wiki.hacks.guide/wiki/3DS:Setting_game_locales/Extended_locale_setting");
             await RespondToInfoCommand(replyBuilder);
         }
 
