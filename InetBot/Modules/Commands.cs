@@ -864,6 +864,7 @@ namespace InetBot.Modules
                         await HandleManualCTRTransferCommand();
                         break;
                     case "movable":
+                    case "movablemoveover":
                     case "mm":
                         await HandleMovableCommand();
                         break;
@@ -890,8 +891,11 @@ namespace InetBot.Modules
                         break;
                     case "integrity":
                     case "checksd":
-                    case "fakesd":
                         await HandleIntegrityCommand();
+                        break;
+                    case "validrive":
+                    case "fakesd":
+                        await HandleValidriveCommand();
                         break;
                     case "ntrboot":
                         await HandleNTRBootCommand();
@@ -4026,6 +4030,14 @@ namespace InetBot.Modules
             await RespondToInfoCommand(replyBuilder);
         }
 
+        private async Task HandleValidriveCommand()
+        {
+            var replyBuilder = new EmbedBuilder()
+                .WithTitle("About Validrive")
+                .WithDescription("https://www.grc.com/validrive.htm");
+            await RespondToInfoCommand(replyBuilder);
+        }
+
         private async Task HandleUninstallAppsCommand()
         {
             var replyBuilder = new EmbedBuilder()
@@ -4284,7 +4296,7 @@ namespace InetBot.Modules
                 "https://wiki.hacks.guide/wiki/Gatekeeper\n\n" +
                 "`?hardwaretest ?hwt ?hwtest`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Hardware_test\n\n" +
-                "`?integrity ?checksd ?fakesd`\n" +
+                "`?integrity ?checksd`\n" +
                 "https://wiki.hacks.guide/wiki/Checking_SD_card_integrity\n\n" +
                 "`?jumpstart`\n" +
                 "https://hardware.hacks.guide/wiki/Guides/Batteries\n\n" +
@@ -4333,6 +4345,8 @@ namespace InetBot.Modules
                 "https://3ds.hacks.guide/uninstall-cfw.html\n\n" +
                 "`?uninstall`\n" +
                 "https://wiki.hacks.guide/wiki/3DS:Uninstalling_software\n\n" +
+                "`?validrive ?fakesd`\n" +
+                "https://www.grc.com/validrive.htm\n\n" +
                 "`?wirelessstreaming ?wireless`\n" +
                 "wiki.hacks.guide/wiki/3DS:Wireless_streaming\n\n" +
                 "`?links`\n" +
